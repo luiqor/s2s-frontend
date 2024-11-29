@@ -1,6 +1,6 @@
 server {
     listen       80;
-    server_name  s2s-front-stage.azurewebsites.net;
+    server_name  s2s-fronend;
 
     location ~ ^/api/(.*)$ {
         rewrite ^/api/(.*)$ /$1 break;
