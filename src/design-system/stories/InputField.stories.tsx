@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { fn } from '@storybook/test'
 import { useState } from 'react'
-import InputField from '~/design-system/components/input-field/InputField'
-import { InputFieldVariantEnum } from '~/design-system/components/input-field/InputField.constants'
-import { InputFieldProps } from '~/design-system/components/input-field/InputField'
+import { InputFieldVariantEnum } from '~scss-components/input-field/InputField.constants'
+import InputField, {
+  InputFieldProps
+} from '~scss-components/input-field/InputField'
 
 const meta: Meta<typeof InputField> = {
   title: 'Components/InputField',
@@ -46,7 +47,9 @@ This component is ideal for building robust and user-friendly forms, search bars
     placeholder: '',
     search: true,
     error: false,
-    onChange: fn()
+    onChange: fn(),
+    onKeyDown: fn(),
+    onClear: fn()
   },
   argTypes: {
     value: {
@@ -90,10 +93,18 @@ type Story = StoryObj<typeof meta>
 
 const InputFieldTemplate = (args: InputFieldProps) => {
   const [value, setValue] = useState(args.value)
+
+  const handleClearInput = () => {
+    setValue('')
+  }
+  const handleKeyDown = args.onKeyDown
+
   return (
     <InputField
       {...args}
       onChange={(e) => setValue(e.target.value)}
+      onClear={handleClearInput}
+      onKeyDown={handleKeyDown}
       value={value}
     />
   )
