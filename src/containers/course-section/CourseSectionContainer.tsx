@@ -57,7 +57,6 @@ import { useModalContext } from '~/context/modal-context'
 import useAxios from '~/hooks/use-axios'
 import useMenu from '~/hooks/use-menu'
 import ChangeResourceConfirmModal from '../change-resource-confirm-modal/ChangeResourceConfirmModal'
-
 interface SectionProps extends CourseSectionHandlers {
   sectionData: CourseSection
   isCooperation?: boolean
@@ -154,7 +153,6 @@ const CourseSectionContainer: FC<SectionProps> = ({
         void ResourceService.deleteAttachment(resource._id)
       }
     }
-
     resourceEventHandler?.({
       type: CourseResourceEventType.ResourceRemoved,
       sectionId: sectionData.id,
