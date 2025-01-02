@@ -59,7 +59,7 @@ const ActiveStudentsBlock = () => {
             onClick={onAddStudentClick}
             sx={styles.showMoreWrapper}
           >
-            <AppIconButton size='medium' sx={styles.showMoreButton}>
+            <AppIconButton isToggled size='lg' toggleAble>
               <Add />
             </AppIconButton>
             <Typography>{t('activeStudents.addStudent')}</Typography>
@@ -78,7 +78,6 @@ const ActiveStudentsBlock = () => {
       subjectName={cooperation.offer.subject.name}
     />
   ))
-
   return (
     <>
       <Typography sx={styles.title}>{t('activeStudents.title')}</Typography>
@@ -89,7 +88,7 @@ const ActiveStudentsBlock = () => {
           onClick={onShowMoreClick}
           sx={styles.showMoreWrapper}
         >
-          <AppIconButton size='medium' sx={styles.showMoreButton}>
+          <AppIconButton isToggled size='lg' toggleAble>
             <MoreHoriz />
           </AppIconButton>
           <Typography>{t('activeStudents.showMore')}</Typography>
