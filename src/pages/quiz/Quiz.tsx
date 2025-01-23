@@ -11,7 +11,7 @@ import PageWrapper from '~/components/page-wrapper/PageWrapper'
 import QuizHeader from '~/containers/quiz/quiz-header/QuizHeader'
 import SelectableQuestionQuizView from '~/containers/quiz/selectable-question-quiz-view/SelectableQuestionQuizView'
 import ScrollQuestionsQuizView from '~/containers/quiz/scroll-question-quiz-view/ScrollQuestionsQuizView'
-import AppButton from '~/components/app-button/AppButton'
+import Button from '~scss-components/button/Button'
 
 import useQuery from '~/hooks/use-query'
 import useForm from '~/hooks/use-form'
@@ -106,9 +106,9 @@ const QuizPage = () => {
 
   const finishButton = !isFinished && isStudent && (
     <Box sx={styles.finishBlock.root}>
-      <AppButton onClick={handleFinish} sx={styles.finishBlock.button}>
+      <Button onClick={handleFinish} sx={styles.finishBlock.button}>
         {t('quiz.finish')}
-      </AppButton>
+      </Button>
     </Box>
   )
 
