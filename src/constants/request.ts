@@ -114,6 +114,11 @@ export const URLs = {
     patch: '/quizzes',
     delete: '/quizzes'
   },
+  finishedQuizzes: {
+    add: '/finished-quizzes',
+    get: '/finished-quizzes',
+    getById: '/finished-quizzes/:id'
+  },
   attachments: {
     post: '/attachments'
   }

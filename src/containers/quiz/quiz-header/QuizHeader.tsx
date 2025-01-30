@@ -19,6 +19,9 @@ type QuizHeaderProps = {
   points: number
   totalPoints: number
   isGraded: boolean
+  questionsAnswered: number
+  createdAt: string
+  updatedAt: string
 }
 
 const QuizHeader = ({
@@ -27,7 +30,10 @@ const QuizHeader = ({
   description,
   points,
   totalPoints,
-  isGraded
+  isGraded,
+  questionsAnswered,
+  createdAt,
+  updatedAt
 }: QuizHeaderProps) => {
   const { userRole } = useAppSelector((state) => state.appMain)
 
@@ -42,8 +48,20 @@ const QuizHeader = ({
         style={styles.titleWithDescription}
         title={title}
       />
-      {!isFinished && isStudent && <ActiveQuizInfo />}
-      {isFinished && isStudent && <FinishedQuizInfo />}
+      {!isFinished && isStudent && (
+        <ActiveQuizInfo
+          questionsAnswered={questionsAnswered}
+          totalPoints={totalPoints}
+        />
+      )}
+      {isFinished && isStudent && (
+        <FinishedQuizInfo
+          createdAt={createdAt}
+          points={points}
+          totalPoints={totalPoints}
+          updatedAt={updatedAt}
+        />
+      )}
       {!isGraded && isTutor && <UngradedQuizInfo />}
       {isGraded && isTutor && (
         <GradedQuizInfo points={points} totalPoints={totalPoints} />
