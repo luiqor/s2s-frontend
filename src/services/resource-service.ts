@@ -117,15 +117,29 @@ export const ResourceService = {
       })
     })
   },
-  updateAttachment: async (params?: UpdateAttachmentParams) =>
-    await axiosClient.patch(
+  updateAttachment: async (params?: UpdateAttachmentParams) => {
+    return await axiosClient.patch(
       createUrlPath(URLs.resources.attachments.patch, params?.id),
       params
-    ),
-  deleteAttachment: async (id: string): Promise<AxiosResponse> =>
-    await axiosClient.delete(
+    )
+  },
+  updateAttachmentQuery: (data: UpdateAttachmentParams) => {
+    const { id, ...attachmentData } = data
+
+    return baseService.request<Attachment>({
+      method: 'PATCH',
+      url: getFullUrl({
+        pathname: URLs.resources.attachments.patch,
+        parameters: { id }
+      }),
+      data: attachmentData
+    })
+  },
+  deleteAttachment: async (id: string): Promise<AxiosResponse> => {
+    return await axiosClient.delete(
       createUrlPath(URLs.resources.attachments.delete, id)
-    ),
+    )
+  },
   createAttachments: (data?: FormData): Promise<AxiosResponse> => {
     return axiosClient.post(URLs.attachments.post, data, {
       headers: { 'Content-Type': 'multipart/form-data' }
