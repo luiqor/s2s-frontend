@@ -13,6 +13,7 @@ import SelectableQuestionQuizView from '~/containers/quiz/selectable-question-qu
 import ScrollQuestionsQuizView from '~/containers/quiz/scroll-question-quiz-view/ScrollQuestionsQuizView'
 import Button from '~scss-components/button/Button'
 import FinishQuizModal from '~/containers/quiz/finish-quiz-modal/FinishQuizModal'
+import QuizInfoSection from '~/containers/quiz/quiz-info-section/QuizInfoSection'
 
 import useQuery from '~/hooks/use-query'
 import useMutation from '~/hooks/use-mutation'
@@ -30,23 +31,23 @@ import {
   QuizViewEnum,
   UserRoleEnum
 } from '~/types'
+import { formatTime, getFormattedDate } from '~/utils/helper-functions'
+import { Typography } from '@mui/material'
 
 const QuizPage = () => {
   const { userRole } = useAppSelector((state) => state.appMain)
 
-  const { id, quizId } = useParams()
+  const { id: cooperationId = '', quizId = '' } = useParams()
   const navigate = useNavigate()
 
   const { t } = useTranslation()
 
   const [isFinished, setIsFinished] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [showPreview, setShowPreview] = useState(true)
 
   const getQuiz = useCallback(() => {
-    if (quizId) {
-      return ResourceService.getQuizQuery(quizId)
-    }
-    return defaultQuizResponse
+    return ResourceService.getQuizQuery(quizId)
   }, [quizId])
 
   const { handleInputChange, handleNonInputValueChange, data } = useForm<
@@ -68,23 +69,38 @@ const QuizPage = () => {
   }, [])
 
   const {
-    settings: { pointValues, scoredResponses, correctAnswers, view },
+    settings: {
+      pointValues,
+      scoredResponses,
+      correctAnswers,
+      view,
+      attemptLimit,
+      timeLimit
+    },
     description,
     title,
     items,
     createdAt,
     updatedAt
-  } = quiz || defaultQuizResponse
+  } = quiz ?? defaultQuizResponse
 
   const points = countPoints(
     items.filter(({ type }) => type !== QuestionTypesEnum.OpenAnswer),
     data
   )
+  const getQuizzes = useCallback(() => {
+    return ResourceService.getFinishedQuizzesByQuizId(cooperationId, quizId)
+  }, [cooperationId, quizId])
+
+  const { data: finishedAttempts = [] } = useQuery({
+    queryKey: ['finished-quizzes', cooperationId, quizId],
+    queryFn: getQuizzes
+  })
 
   const addFinishedQuiz = useCallback(() => {
     return ResourceService.addFinishedQuiz({
-      cooperation: id ?? '',
-      quiz: quizId ?? '',
+      cooperation: cooperationId,
+      quiz: quizId,
       grade: Math.round((points / items.length) * 100),
       results: items.map(({ text, answers, _id }) => {
         return {
@@ -97,7 +113,7 @@ const QuizPage = () => {
         }
       })
     })
-  }, [data, id, items, points, quizId])
+  }, [data, cooperationId, items, points, quizId])
 
   const { mutate, data: finishedQuiz } = useMutation({
     mutationFn: addFinishedQuiz
@@ -116,7 +132,7 @@ const QuizPage = () => {
     }
   }, [mutate, navigate, scoredResponses])
 
-  if (isLoading || !quiz) {
+  if (isLoading || !quiz || !finishedAttempts) {
     return <Loader pageLoad />
   }
 
@@ -153,6 +169,7 @@ const QuizPage = () => {
   )
 
   const isStudent = userRole === UserRoleEnum.Student
+  const headerSettings = { attemptLimit, timeLimit }
 
   const finishButton = !isFinished && isStudent && (
     <Box sx={styles.finishBlock.root}>
@@ -163,30 +180,82 @@ const QuizPage = () => {
   )
 
   const questionsAnswered = Object.keys(data).length
-
+  const attemptsList =
+    Array.isArray(finishedAttempts) && finishedAttempts.length !== 0 ? (
+      finishedAttempts.map((item) => {
+        return (
+          <Box key={item._id} sx={styles.attemptWrapper}>
+            <QuizInfoSection
+              firstColumn={getFormattedDate({ date: item.updatedAt })}
+              secondColumn={formatTime(item.updatedAt)}
+              title={t('quiz.attemptFinished')}
+            />
+            <Box>
+              <Button variant='tonal'>{t('quiz.reviewAttempt')}</Button>
+            </Box>
+          </Box>
+        )
+      })
+    ) : (
+      <Box sx={styles.attemptTypographyWrapper}>
+        <Typography sx={styles.typography}>
+          {t('quiz.noUsedAttempts')}
+        </Typography>
+      </Box>
+    )
   return (
     <PageWrapper sx={styles.quizzesWrapper}>
-      <Box component={ComponentEnum.Form} sx={styles.quizzesWrapper}>
-        <QuizHeader
-          createdAt={finishedQuiz?.createdAt ?? createdAt}
-          description={description}
-          isFinished={isFinished}
-          isGraded={showPoints}
-          points={points || 0}
-          questionsAnswered={questionsAnswered}
-          title={title}
-          totalPoints={items.length}
-          updatedAt={finishedQuiz?.updatedAt ?? updatedAt}
-        />
-        <Divider sx={styles.divider} />
-        {questionsBlock}
-        {finishButton}
-      </Box>
-      <FinishQuizModal
-        onCancel={handleCancel}
-        onFinish={handleFinish}
-        open={isOpen}
-      />
+      {showPreview ? (
+        <Box>
+          <QuizHeader
+            createdAt={finishedQuiz?.createdAt ?? createdAt}
+            description={description}
+            handlePreview={setShowPreview}
+            isFinished={false}
+            isGraded={false}
+            isNotStarted={showPreview}
+            points={0}
+            questionsAnswered={questionsAnswered}
+            quizItems={items}
+            settings={headerSettings}
+            title={title}
+            totalPoints={items.length}
+            updatedAt={finishedQuiz?.updatedAt ?? updatedAt}
+            usedAttempts={finishedAttempts.length}
+          />
+          <Divider sx={styles.divider} />
+          {attemptsList}
+        </Box>
+      ) : (
+        <Box>
+          <Box component={ComponentEnum.Form} sx={styles.quizzesWrapper}>
+            <QuizHeader
+              createdAt={finishedQuiz?.createdAt ?? createdAt}
+              description={description}
+              handlePreview={setShowPreview}
+              isFinished={isFinished}
+              isGraded={showPoints}
+              isNotStarted={showPreview}
+              points={points ?? 0}
+              questionsAnswered={questionsAnswered}
+              quizItems={items}
+              settings={headerSettings}
+              title={title}
+              totalPoints={items.length}
+              updatedAt={finishedQuiz?.updatedAt ?? updatedAt}
+              usedAttempts={finishedAttempts.length}
+            />
+            <Divider sx={styles.divider} />
+            {questionsBlock}
+            {finishButton}
+          </Box>
+          <FinishQuizModal
+            onCancel={handleCancel}
+            onFinish={handleFinish}
+            open={isOpen}
+          />
+        </Box>
+      )}
     </PageWrapper>
   )
 }

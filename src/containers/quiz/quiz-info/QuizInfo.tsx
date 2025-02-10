@@ -3,17 +3,27 @@ import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import Button from '~/design-system/components/button/Button'
+import DividerComponent from '~/design-system/components/divider/Divider'
+import { Alert } from '@mui/material'
+import { AccessTimeRounded } from '@mui/icons-material'
 
 import QuizInfoSection from '~/containers/quiz/quiz-info-section/QuizInfoSection'
 import Timer from '~/containers/quiz/timer/Timer'
 import Points from '~/containers/quiz/points/Points'
+import QuizDialog from '~/containers/quiz/quiz-dialog/QuizDialog'
 
 import styles from '~/containers/quiz/quiz-info/QuizInfo.styles'
 import {
   getFormattedDate,
   formatTime,
-  formatTimeDifference
+  formatTimeDifference,
+  spliceSx
 } from '~/utils/helper-functions'
+
+import { QuizAttempt, QuizTimeLimit } from '~/types'
+import { getQuizTimeLimitFields } from '~/containers/my-quizzes/quiz-settings-container/QuizSettingsContainer.constants'
+import { TFunction } from 'i18next'
+import { useState } from 'react'
 
 type ActiveQuizInfoProps = {
   questionsAnswered: number
@@ -158,4 +168,147 @@ const GradedQuizInfo = ({ points, totalPoints }: GradedQuizInfoProps) => {
   )
 }
 
-export { ActiveQuizInfo, FinishedQuizInfo, UngradedQuizInfo, GradedQuizInfo }
+type StartViewQuizInfoProps = {
+  questionsAmount: number
+  attempts: QuizAttempt
+  timeLimit: QuizTimeLimit
+  usedAttempts: number
+  handleStartButton: (value: boolean) => void
+}
+const StartViewQuizInfo = ({
+  questionsAmount,
+  attempts,
+  timeLimit,
+  usedAttempts,
+  handleStartButton
+}: StartViewQuizInfoProps) => {
+  const { t } = useTranslation()
+  const [isOpen, setIsOpen] = useState(false)
+
+  const totalAttempts = attempts.split(' ')[0]
+  const timeLimitNumber = timeLimit.split(' ')[0]
+
+  const limits = {
+    isNoLimitAttempt: attempts === QuizAttempt.NoLimit,
+    isNoLimitTime: timeLimit === QuizTimeLimit.NoLimit,
+    maxAttempts: Number(totalAttempts) || 0
+  }
+
+  const hasAttempts =
+    limits.isNoLimitAttempt || usedAttempts < limits.maxAttempts
+
+  const typographyStyle = (subType: number) => {
+    return spliceSx(
+      styles[`subtitle${subType}` as keyof typeof styles],
+      styles.subtitleSize
+    )
+  }
+
+  const getQuizTimeLimitTitle = (t: TFunction, timeLimit: QuizTimeLimit) => {
+    const timeOption = getQuizTimeLimitFields(t).find(
+      (option) => option.value === timeLimit
+    )
+    return timeOption?.title ?? ''
+  }
+
+  const handleStartAttempt = () => {
+    limits.isNoLimitTime ? handleStartButton(false) : setIsOpen(true)
+  }
+
+  const attemptLimitOutput = !limits.isNoLimitAttempt && (
+    <>
+      <Box sx={styles.dividerEllipse}>
+        <DividerComponent
+          caption=''
+          orientation='horizontal'
+          size='small'
+          textAlign='center'
+          thickness='md'
+          type='ellipse'
+          variant='middle'
+        />
+      </Box>
+      <Typography sx={typographyStyle(1)}>{t('quiz.attemptLimit')}:</Typography>
+      <Typography sx={typographyStyle(2)}>
+        {usedAttempts}/{totalAttempts}
+      </Typography>
+    </>
+  )
+
+  const timeLimitOutput = !limits.isNoLimitTime && (
+    <>
+      <Box sx={styles.dividerEllipse}>
+        <DividerComponent
+          caption=''
+          orientation='horizontal'
+          size='small'
+          textAlign='right'
+          thickness='md'
+          type='ellipse'
+          variant='inset'
+        />
+      </Box>
+      <Typography sx={typographyStyle(1)}>{t('quiz.timeLimit')}:</Typography>
+      <Typography sx={typographyStyle(2)}>
+        {getQuizTimeLimitTitle(t, timeLimit)}
+      </Typography>
+    </>
+  )
+
+  const noAttemptsAlert = !hasAttempts && (
+    <Alert severity='info'>{t('quiz.reachedAttemptLimit')}</Alert>
+  )
+
+  const handleTimeLimitModal = (isOpen: boolean, isStart: boolean) => {
+    setIsOpen(isOpen)
+    handleStartButton(isStart)
+  }
+
+  return (
+    <>
+      <QuizDialog
+        actionText='quiz.start'
+        description='quiz.timeLimitReminderDescription'
+        descriptionParams={{ timeLimit: timeLimitNumber }}
+        icon={<AccessTimeRounded />}
+        onAction={() => {
+          handleTimeLimitModal(false, false)
+        }}
+        onClose={() => {
+          handleTimeLimitModal(false, true)
+        }}
+        open={isOpen}
+        title='quiz.timeLimitReminderTitle'
+      />
+      <Box sx={styles.infoWrapper}>
+        <Box sx={styles.quizSettings}>
+          <Typography sx={typographyStyle(1)}>
+            {t('quiz.questionsAmount')}:
+          </Typography>
+          <Typography sx={typographyStyle(2)}>{questionsAmount}</Typography>
+          {attemptLimitOutput}
+          {timeLimitOutput}
+        </Box>
+        <Box sx={styles.buttonWrapper}>
+          <Button
+            data-testid='startButton'
+            disabled={!hasAttempts}
+            onClick={handleStartAttempt}
+            size='sm'
+          >
+            {usedAttempts === 0 ? t('quiz.startQuiz') : t('quiz.tryAgain')}
+          </Button>
+        </Box>
+      </Box>
+      {noAttemptsAlert}
+    </>
+  )
+}
+
+export {
+  ActiveQuizInfo,
+  FinishedQuizInfo,
+  UngradedQuizInfo,
+  GradedQuizInfo,
+  StartViewQuizInfo
+}

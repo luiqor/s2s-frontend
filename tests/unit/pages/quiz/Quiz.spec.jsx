@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { expect, vi } from 'vitest'
 import { screen, fireEvent, act } from '@testing-library/react'
 import { renderWithProviders } from '~tests/test-utils'
 import Quiz from '~/pages/quiz/Quiz'
@@ -27,7 +27,9 @@ const mockQuiz = {
     shuffle: false,
     pointValues: true,
     scoredResponses: true,
-    correctAnswers: true
+    correctAnswers: true,
+    attemptLimit: '2 attempts',
+    timeLimit: '15 minutes'
   },
   createdAt: '2024-05-12T21:45:51.693Z',
   updatedAt: '2024-06-07T07:05:33.052Z',
@@ -52,32 +54,85 @@ const mockQuizEmpty = {
     shuffle: false,
     pointValues: false,
     scoredResponses: false,
-    correctAnswers: false
+    correctAnswers: false,
+    attemptLimit: '2 attempts',
+    timeLimit: '15 minutes'
   },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString()
 }
 
-let mockNavigate
+const mockFinishedAttempts = [
+  {
+    _id: '6641388f36ebdb0432a3a2e5',
+    updatedAt: '2024-06-07T07:05:33.052Z',
+    grade: 85,
+    results: [
+      {
+        question: 'What is the difference between function expression and function declaration?',
+        answers: [{ text: 'Correct answer', isCorrect: true, isChosen: true }]
+      }
+    ]
+  }
+]
 
-beforeEach(() => {
-  mockNavigate = vi.fn()
-  vi.mock('react-router-dom', async () => {
-    const originalModule = await vi.importActual('react-router-dom')
-    return {
-      ...originalModule,
-      useNavigate: () => mockNavigate
-    }
+const mockMaxAttempts = [
+  {
+    _id: '6641388f36ebdb0432a3a2e5',
+    updatedAt: '2024-06-07T07:05:33.052Z',
+    grade: 85,
+    results: [
+      {
+        question: 'What is the difference between function expression and function declaration?',
+        answers: [{ text: 'Correct answer', isCorrect: true, isChosen: true }]
+      }
+    ]
+  },
+  {
+    _id: '6641388f36ebdb0432a3a2e6',
+    updatedAt: '2024-06-08T07:05:33.052Z',
+    grade: 90,
+    results: [
+      {
+        question: 'What is the difference between function expression and function declaration?',
+        answers: [{ text: 'Correct answer', isCorrect: true, isChosen: true }]
+      }
+    ]
+  }
+]
+
+let mockNavigate
+let preloadedState
+let mockAttemptsData = mockFinishedAttempts
+
+describe('QuizPage with no used attempts', () => {
+
+  beforeEach(() => {
+    preloadedState = { appMain: { userRole: UserRoleEnum.Student } }
+    mockNavigate = vi.fn()
+    vi.mock('react-router-dom', async () => {
+      const originalModule = await vi.importActual('react-router-dom')
+      return {
+        ...originalModule,
+        useNavigate: () => mockNavigate
+      }
+    })
+
+    vi.clearAllMocks()
+
+    useQuery.mockImplementation(({ queryKey }) => {
+      if (queryKey[0] === 'quiz' && preloadedState.appMain.userRole === UserRoleEnum.Student) {
+        return { data: mockQuiz, isLoading: false }
+      }
+      return {data: [], isLoading: false}
+    })
+    
   })
 
-  vi.clearAllMocks()
-})
+  afterEach(() => {
+    vi.resetModules()
+  })
 
-afterEach(() => {
-  vi.resetModules()
-})
-
-describe('QuizPage with useQuery', () => {
   it('should render loading state', () => {
     useQuery.mockReturnValue({
       data: mockQuiz,
@@ -90,24 +145,41 @@ describe('QuizPage with useQuery', () => {
     expect(loader).toBeInTheDocument()
   })
 
-  it('should render quiz page with data', () => {
-    useQuery.mockReturnValue({
-      data: mockQuiz,
-      isLoading: false
+  it('should render quiz preview page with data', async () => {
+    renderWithProviders(<Quiz />, {
+      preloadedState
     })
-
-    renderWithProviders(<Quiz />)
-
-    const quizTitle = screen.getByText('JS Quiz')
+  
+    const quizTitle = await screen.findByText('JS Quiz')
     expect(quizTitle).toBeInTheDocument()
 
+    const startQuizButton = screen.getByText('quiz.startQuiz')
+    expect(startQuizButton).toBeInTheDocument()
+
+  })
+
+  it('should render quiz page with data only for Student', async () => {
+  
+    renderWithProviders(<Quiz />, {
+      preloadedState
+    })
+  
+    const quizTitle = await screen.findByText('JS Quiz')
+    expect(quizTitle).toBeInTheDocument()
+
+    const startQuizButton = screen.getByText('quiz.startQuiz')
+    fireEvent.click(startQuizButton)
+  
+    const startQuizModal = screen.getByText('quiz.start')
+    fireEvent.click(startQuizModal)
+  
     const questionText = screen.getByText(
       'What is the difference between function expression and function declaration?'
     )
     expect(questionText).toBeInTheDocument()
   })
 
-  it('should render empty state for empty data', () => {
+  it('should render empty state for empty data', async () => {
     useQuery.mockReturnValue({
       data: mockQuizEmpty,
       isLoading: false
@@ -115,17 +187,19 @@ describe('QuizPage with useQuery', () => {
 
     renderWithProviders(<Quiz />)
 
-    const emptyTitle = screen.getByText('Empty')
+    const emptyTitle = await screen.findByText('Empty')
     expect(emptyTitle).toBeInTheDocument()
   })
 
-  it('should update checkbox value', () => {
-    useQuery.mockReturnValue({
-      data: mockQuiz,
-      isLoading: false
+  it('should update checkbox value', async () => {
+    renderWithProviders(<Quiz />, {
+      preloadedState
     })
+    const startQuizButton = await screen.findByText('quiz.startQuiz')
+    fireEvent.click(startQuizButton)
 
-    renderWithProviders(<Quiz />)
+    const startQuizModal = screen.getByText('quiz.start')
+    fireEvent.click(startQuizModal)
 
     const checkbox = screen.getByRole('checkbox')
     expect(checkbox).toHaveProperty('checked', false)
@@ -137,18 +211,16 @@ describe('QuizPage with useQuery', () => {
     expect(checkbox).toHaveProperty('checked', true)
   })
 
-  it('should display correct answers after finishing quiz', () => {
-    const preloadedState = { appMain: { userRole: UserRoleEnum.Student } }
-
-    useQuery.mockReturnValue({
-      data: mockQuiz,
-      isLoading: false
-    })
+  it('should display correct answers after finishing quiz', async () => {
 
     renderWithProviders(<Quiz />, {
       preloadedState
     })
+    const startQuizButton = await screen.findByText('quiz.startQuiz')
+    fireEvent.click(startQuizButton)
 
+    const startQuizModal = screen.getByText('quiz.start')
+    fireEvent.click(startQuizModal)
     const finishButton = screen.getByText('quiz.finish')
     act(() => {
       fireEvent.click(finishButton)
@@ -165,17 +237,16 @@ describe('QuizPage with useQuery', () => {
     expect(correctAnswersLabel).toBeInTheDocument()
   })
 
-  it('should render points and correctness when finished', () => {
-    const preloadedState = { appMain: { userRole: UserRoleEnum.Student } }
-
-    useQuery.mockReturnValue({
-      data: mockQuiz,
-      isLoading: false
-    })
-
+  it('should render points and correctness when finished', async () => {
     renderWithProviders(<Quiz />, {
       preloadedState
     })
+
+    const startQuizButton = await screen.findByText('quiz.startQuiz')
+    fireEvent.click(startQuizButton)
+
+    const startQuizModal = screen.getByText('quiz.start')
+    fireEvent.click(startQuizModal)
 
     const finishButton = screen.getByText('quiz.finish')
     fireEvent.click(finishButton)
@@ -185,7 +256,7 @@ describe('QuizPage with useQuery', () => {
       fireEvent.click(confirmButton)
     })
 
-    const pointsLabel = screen.getByText((_, element) => {
+    const pointsLabel = await screen.findByText((_, element) => {
       return (
         element?.textContent?.includes('quiz.points') &&
         element.tagName.toLowerCase() === 'p'
@@ -200,13 +271,16 @@ describe('QuizPage with useQuery', () => {
     expect(answersCorrectnessLabel).toBeInTheDocument()
   })
 
-  it('should render question text', () => {
-    useQuery.mockReturnValue({
-      data: mockQuiz,
-      isLoading: false
-    })
+  it('should render question text', async () => {
 
-    renderWithProviders(<Quiz />)
+    renderWithProviders(<Quiz />, {
+      preloadedState
+    })
+    const startQuizButton = await screen.findByText('quiz.startQuiz')
+    fireEvent.click(startQuizButton)
+
+    const startQuizModal = screen.getByText('quiz.start')
+    fireEvent.click(startQuizModal)
 
     const questionText = screen.getByText(
       'What is the difference between function expression and function declaration?'
@@ -214,33 +288,31 @@ describe('QuizPage with useQuery', () => {
     expect(questionText).toBeInTheDocument()
   })
 
-  it('should render timer for the active quiz for student', () => {
-    const preloadedState = { appMain: { userRole: UserRoleEnum.Student } }
-
-    useQuery.mockReturnValue({
-      data: mockQuiz,
-      isLoading: false
-    })
+  it('should render timer for the active quiz for student', async () => {
 
     renderWithProviders(<Quiz />, {
       preloadedState
     })
+    const startQuizButton = await screen.findByText('quiz.startQuiz')
+    fireEvent.click(startQuizButton)
 
-    const timer = screen.getByTestId('TimerOutlinedIcon')
+    const startQuizModal = screen.getByText('quiz.start')
+    fireEvent.click(startQuizModal)
+
+    const timer = await screen.findByTestId('TimerOutlinedIcon')
     expect(timer).toBeInTheDocument()
   })
 
-  it('should render duration for the finished quiz for student', () => {
-    const preloadedState = { appMain: { userRole: UserRoleEnum.Student } }
-
-    useQuery.mockReturnValue({
-      data: mockQuiz,
-      isLoading: false
-    })
+  it('should render duration for the finished quiz for student', async () => {
 
     renderWithProviders(<Quiz />, {
       preloadedState
     })
+    const startQuizButton = await screen.findByText('quiz.startQuiz')
+    fireEvent.click(startQuizButton)
+
+    const startQuizModal = screen.getByText('quiz.start')
+    fireEvent.click(startQuizModal)
 
     const finishButton = screen.getByText('quiz.finish')
     fireEvent.click(finishButton)
@@ -250,9 +322,74 @@ describe('QuizPage with useQuery', () => {
       fireEvent.click(confirmButton)
     })
 
-    const duration = screen.getByText(/quiz\.duration:/i)
+    const duration = await screen.findByText(/quiz\.duration:/i)
     expect(duration).toBeInTheDocument()
 
     expect(duration).toBeInTheDocument()
+  })
+})
+
+describe('QuizPage with finished attempts', () => {
+
+  beforeEach(() => {
+    preloadedState = { appMain: { userRole: UserRoleEnum.Student } }
+    mockNavigate = vi.fn()
+    vi.mock('react-router-dom', async () => {
+      const originalModule = await vi.importActual('react-router-dom')
+      return {
+        ...originalModule,
+        useNavigate: () => mockNavigate
+      }
+    })
+
+    vi.clearAllMocks()
+
+    useQuery.mockImplementation(({ queryKey }) => {
+      if (queryKey[0] === 'quiz' && preloadedState.appMain.userRole === UserRoleEnum.Student) {
+        return { data: mockQuiz, isLoading: false }
+      }
+      if (queryKey[0] === 'finished-quizzes' && preloadedState.appMain.userRole === UserRoleEnum.Student) {
+        return {data: mockAttemptsData, isLoading: false}
+      }
+      return {data: [], isLoading: false}
+    })
+    
+  })
+
+  afterEach(() => {
+    vi.resetModules()
+  })
+
+  it('should render quiz preview page with correct data', async () => {
+    renderWithProviders(<Quiz />, {
+      preloadedState
+    })
+  
+    const quizTitle = await screen.findByText('JS Quiz')
+    expect(quizTitle).toBeInTheDocument()
+
+    const tryAgainQuizButton = screen.getByText('quiz.tryAgain')
+    expect(tryAgainQuizButton).toBeInTheDocument()
+  })
+
+  it('should render quiz review attempt block correctly', () => {
+    renderWithProviders(<Quiz />, {
+      preloadedState
+    })
+    const reviewAttemptButton = screen.getByText('quiz.reviewAttempt')
+    expect(reviewAttemptButton).toBeInTheDocument()
+  })
+
+  it('should render quiz preview correctly when reached attempt limit', () => {
+    mockAttemptsData = mockMaxAttempts
+    renderWithProviders(<Quiz />, {
+      preloadedState
+    })
+    const reachedAttemptsAlert = screen.getByText('quiz.reachedAttemptLimit')
+    expect(reachedAttemptsAlert).toBeInTheDocument()
+
+    const tryAgainQuizButton = screen.getByTestId('startButton')
+    expect(tryAgainQuizButton).toBeInTheDocument()
+    expect(tryAgainQuizButton).toHaveClass('Mui-disabled')
   })
 })

@@ -1,12 +1,18 @@
 import { useAppSelector } from '~/hooks/use-redux'
 import Box from '@mui/material/Box'
 
-import { UserRoleEnum } from '~/types'
+import {
+  type Question,
+  type QuizAttempt,
+  type QuizTimeLimit,
+  UserRoleEnum
+} from '~/types'
 import {
   ActiveQuizInfo,
   FinishedQuizInfo,
   UngradedQuizInfo,
-  GradedQuizInfo
+  GradedQuizInfo,
+  StartViewQuizInfo
 } from '~/containers/quiz/quiz-info/QuizInfo'
 import TitleWithDescription from '~/components/title-with-description/TitleWithDescription'
 
@@ -22,9 +28,17 @@ type QuizHeaderProps = {
   questionsAnswered: number
   createdAt: string
   updatedAt: string
+  isNotStarted: boolean
+  quizItems: Question[]
+  usedAttempts: number
+  settings: {
+    attemptLimit: QuizAttempt
+    timeLimit: QuizTimeLimit
+  }
+  handlePreview: (value: boolean) => void
 }
 
-const QuizHeader = ({
+const QuizHeader: React.FC<QuizHeaderProps> = ({
   isFinished,
   title,
   description,
@@ -33,10 +47,14 @@ const QuizHeader = ({
   isGraded,
   questionsAnswered,
   createdAt,
-  updatedAt
+  updatedAt,
+  isNotStarted,
+  quizItems,
+  settings,
+  usedAttempts,
+  handlePreview
 }: QuizHeaderProps) => {
   const { userRole } = useAppSelector((state) => state.appMain)
-
   const isStudent = userRole === UserRoleEnum.Student
 
   const isTutor = userRole === UserRoleEnum.Tutor
@@ -48,7 +66,7 @@ const QuizHeader = ({
         style={styles.titleWithDescription}
         title={title}
       />
-      {!isFinished && isStudent && (
+      {!isFinished && isStudent && !isNotStarted && (
         <ActiveQuizInfo
           questionsAnswered={questionsAnswered}
           totalPoints={totalPoints}
@@ -65,6 +83,15 @@ const QuizHeader = ({
       {!isGraded && isTutor && <UngradedQuizInfo />}
       {isGraded && isTutor && (
         <GradedQuizInfo points={points} totalPoints={totalPoints} />
+      )}
+      {!isFinished && isStudent && isNotStarted && (
+        <StartViewQuizInfo
+          attempts={settings.attemptLimit}
+          handleStartButton={handlePreview}
+          questionsAmount={quizItems.length}
+          timeLimit={settings.timeLimit}
+          usedAttempts={usedAttempts}
+        />
       )}
     </Box>
   )
