@@ -140,14 +140,10 @@ const AttachmentsContainer: React.FC = () => {
 
   const props = {
     columns: columnsToShow,
-    data: {
-      response: loadedAttachments ?? defaultResponses.itemsWithCount,
-      getData: invalidateAttachments
-    },
-    services: { deleteService: handleDeleteAttachment },
+    resourceItems: loadedAttachments,
     itemsPerPage,
-    actions: { onEdit},
-    resource: ResourcesTabsEnum.Attachments,
+    actions: { onEdit, onDelete: handleDeleteAttachment },
+    resourceType: ResourcesTabsEnum.Attachments,
     sort: sortOptions,
     pagination: { page, onChange: handleChangePage },
     sx: styles.table
