@@ -39,7 +39,7 @@ const AttachmentsContainer: React.FC = () => {
   const searchFileName = useRef<string>('')
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const formData = new FormData()
-  const { handleErrorAlert } = useSnackbarAlert()
+  const { handleSuccessAlert, handleErrorAlert } = useSnackbarAlert()
 
   const { sort } = sortOptions
   const itemsPerPage = getScreenBasedLimit(breakpoints, itemsLoadLimit)
@@ -56,10 +56,12 @@ const AttachmentsContainer: React.FC = () => {
     [itemsPerPage, page, sort, searchFileName, selectedItems]
   )
 
-  const deleteAttachment = useCallback(
-    (id?: string) => ResourceService.deleteAttachment(id ?? ''),
-    []
-  )
+  const { mutate: handleDeleteAttachment } = useMutation({
+    mutationFn: ResourceService.deleteAttachmentQuery,
+    onError: handleErrorAlert,
+    onSuccess: () => { handleSuccessAlert(`myResourcesPage.attachments.successDeletion`)},
+    queryKey: ['attachments']
+  })
 
   const {
     data: loadedAttachments,
@@ -86,7 +88,7 @@ const AttachmentsContainer: React.FC = () => {
   })
 
   const { mutate: handleCreateAttachment } = useMutation({
-    mutationFn: ResourceService.createAttachment,
+    mutationFn: ResourceService.createAttachments,
     onError: handleErrorAlert,
     queryKey: ['attachments']
   })
@@ -142,9 +144,9 @@ const AttachmentsContainer: React.FC = () => {
       response: loadedAttachments ?? defaultResponses.itemsWithCount,
       getData: invalidateAttachments
     },
-    services: { deleteService: deleteAttachment },
+    services: { deleteService: handleDeleteAttachment },
     itemsPerPage,
-    actions: { onEdit },
+    actions: { onEdit},
     resource: ResourcesTabsEnum.Attachments,
     sort: sortOptions,
     pagination: { page, onChange: handleChangePage },

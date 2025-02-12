@@ -174,20 +174,31 @@ export const ResourceService = {
       data: attachmentData
     })
   },
-  deleteAttachment: async (id: string): Promise<AxiosResponse> => {
-    return await axiosClient.delete(
-      createUrlPath(URLs.resources.attachments.delete, id)
-    )
-  },
-  createAttachment: (data: FormData) => {
-    return baseService.request<Attachment>({
-      method: 'POST',
-      url: URLs.resources.attachments.post,
-      data
+  createAttachments: (data?: FormData): Promise<AxiosResponse> => {
+    return axiosClient.post(URLs.attachments.post, data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
-
-  getQuestions: (params?: GetResourcesParams) => {
+  deleteAttachment: async (id: string): Promise<AxiosResponse> => {
+    return await axiosClient.delete(
+      createUrlPath(URLs.resources.attachments.deleteOld, id)
+    )
+  },
+  deleteAttachmentQuery: (id: string) => {
+    return baseService.request<void>({
+      method: 'DELETE',
+      url: getFullUrl({
+        pathname: URLs.resources.attachments.delete,
+        parameters: { id }
+      })
+    })
+  },
+  getQuestions: (
+    params?: GetResourcesParams
+  ): Promise<AxiosResponse<ItemsWithCount<Question>>> => {
+    return axiosClient.get(URLs.resources.questions.get, { params })
+  },
+  getQuestionsQuery: (params?: GetResourcesParams) => {
     return baseService.request<ItemsWithCount<Question>>({
       method: 'GET',
       url: getFullUrl({
