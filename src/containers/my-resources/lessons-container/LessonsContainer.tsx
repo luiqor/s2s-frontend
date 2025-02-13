@@ -58,7 +58,7 @@ const LessonsContainer = () => {
   }, [page, itemsPerPage, sort, searchTitle, selectedItems])
 
   const { mutate: handleDeleteLesson } = useMutation({
-    mutationFn: ResourceService.deleteLessonQuery,
+    mutationFn: ResourceService.deleteLesson,
     onError: handleErrorAlert,
     onSuccess: () => {
       handleSuccessAlert(`myResourcesPage.lessons.successDeletion`)

@@ -85,7 +85,6 @@ export const URLs = {
       add: '/lessons',
       get: '/lessons',
       getById: '/lessons/:id',
-      deleteOld: '/lessons',
       delete: '/lessons/:id',
       patch: '/lessons/:id'
     },
@@ -93,7 +92,6 @@ export const URLs = {
       get: '/attachments',
       patch: '/attachments/:id',
       delete: '/attachments/:id',
-      deleteOld: '/attachments',
       post: '/attachments'
     },
     questions: {
@@ -108,7 +106,6 @@ export const URLs = {
       getNames: '/resources-categories/names',
       patch: '/resources-categories',
       post: '/resources-categories',
-      deleteOld: 'resources-categories',
       delete: 'resources-categories/:id'
     }
   },
@@ -123,7 +120,6 @@ export const URLs = {
     getById: '/quizzes/:id',
     add: '/quizzes',
     patch: '/quizzes/:id',
-    deleteOld: '/quizzes',
     delete: '/quizzes/:id'
   },
   finishedQuizzes: {

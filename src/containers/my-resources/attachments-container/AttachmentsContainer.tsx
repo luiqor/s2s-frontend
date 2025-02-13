@@ -57,7 +57,7 @@ const AttachmentsContainer: React.FC = () => {
   )
 
   const { mutate: handleDeleteAttachment } = useMutation({
-    mutationFn: ResourceService.deleteAttachmentQuery,
+    mutationFn: ResourceService.deleteAttachment,
     onError: handleErrorAlert,
     onSuccess: () => { handleSuccessAlert(`myResourcesPage.attachments.successDeletion`)},
     queryKey: ['attachments']
