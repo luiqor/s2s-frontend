@@ -258,19 +258,19 @@ export const ResourceService = {
       data: questionData
     })
   },
-
-  deleteQuestion: async (id: string): Promise<AxiosResponse> =>
-    await axiosClient.delete(
-      createUrlPath(URLs.resources.questions.delete, id)
-    ),
-  getResourcesCategories: (params: GetResourcesCategoriesParams) => {
-    return baseService.request<ItemsWithCount<Categories>>({
-      method: 'GET',
+  deleteQuestion: (id: string) => {
+    return baseService.request<void>({
+      method: 'DELETE',
       url: getFullUrl({
-        pathname: URLs.resources.resourcesCategories.get,
-        searchParameters: params
+        pathname: URLs.resources.questions.delete,
+        parameters: { id }
       })
     })
+  },
+  getResourcesCategories: (
+    params?: GetResourcesCategoriesParams
+  ): Promise<AxiosResponse<ItemsWithCount<Categories>>> => {
+    return axiosClient.get(URLs.resources.resourcesCategories.get, { params })
   },
   getResourcesCategoriesNames: () => {
     return baseService.request<CategoryNameInterface[]>({
