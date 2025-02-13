@@ -45,9 +45,9 @@ const CategoriesContainer = () => {
   const { openModal, closeModal } = useModalContext()
   const [selectedItemId, setSelectedItemId] = useState<string>('')
   const [updateResourceCategory] = useUpdateResourceCategoryMutation()
-  const { handleErrorAlert } = useSnackbarAlert()
   const queryClient = useQueryClient()
   const dispatch = useAppDispatch()
+  const { handleSuccessAlert, handleErrorAlert } = useSnackbarAlert()
 
   const { sort } = sortOptions
   const itemsPerPage = getScreenBasedLimit(breakpoints, itemsLoadLimit)
@@ -109,6 +109,15 @@ const CategoriesContainer = () => {
     queryFn: ResourceService.getResourcesCategoriesNames
   })
 
+  const { mutate: handleDeleteCategory } = useMutation({
+    mutationFn: ResourceService.deleteResourceCategoryQuery,
+    onError: handleErrorAlert,
+    onSuccess: () => {
+      handleSuccessAlert(`myResourcesPage.categories.successDeletion`)
+    },
+    queryKey: ['resource-categories']
+  })
+
   const { mutate: handleCreateCategory } = useMutation({
     mutationFn: ResourceService.createResourceCategory,
     onError: handleErrorAlert,
@@ -151,7 +160,7 @@ const CategoriesContainer = () => {
   )
 
   const props = {
-    actions: { onEdit },
+    actions: { onEdit, onDelete: handleDeleteCategory },
     columns: columnsToShow,
     data: {
       response: categories ?? defaultResponses.itemsWithCount,
@@ -161,7 +170,7 @@ const CategoriesContainer = () => {
     pagination: { page, onChange: handleChangePage },
     sort: sortOptions,
     itemsPerPage,
-    resource: ResourcesTabsEnum.Categories,
+    resourceType: ResourcesTabsEnum.Categories,
     sx: styles.table
   }
 
