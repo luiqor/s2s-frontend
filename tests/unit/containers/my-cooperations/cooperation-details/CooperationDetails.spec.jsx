@@ -17,23 +17,20 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-const mockState = {
+const mockStateTutor = {
   appMain: { userId: userId, userRole: 'tutor' }
 }
 
-const cooperationMock = {
+const mockStateStudent = {
+  appMain: { userId: userId, userRole: 'student' }
+}
+
+const cooperationData = {
   _id: '123456789',
   price: 100,
   proficiencyLevel: 'Beginner',
-  status: 'active',
-  needAction: {
-    role: 'tutor',
-    type: 'price',
-    messages: []
-  },
+  status: 'request to close',
   title: 'Cooperation title',
-  initiator: { _id: userId, role: ['tutor'] },
-  receiver: { _id: '123123', role: ['student'] },
   offer: {
     title: 'Title',
     description: 'Description',
@@ -65,6 +62,50 @@ const cooperationMock = {
   updatedAt: '2024-01-12T11:28:34.397Z'
 }
 
+const OPPOSITE_USER_DECIDED_TO_CLOSE_COOPERATION = {
+  ...cooperationData,
+  needAction: {
+    role: 'tutor',
+    type: 'waiting for approval',
+    messages: []
+  },
+  initiator: { _id: userId, role: ['tutor'] },
+  receiver: { _id: '123123', role: ['student'] }
+}
+
+const OPPOSITE_USER_DECLINED_TO_CLOSE_COOPERATION = {
+  ...cooperationData,
+  needAction: {
+    role: 'student',
+    type: 'waiting for answer',
+    messages: ['reason1']
+  },
+  initiator: { _id: userId, role: ['student'] },
+  receiver: { _id: '123123', role: ['tutor'] }
+}
+
+const USER_SUBMITTED_AN_ANSWER = {
+  ...cooperationData,
+  needAction: {
+    role: 'student',
+    type: 'waiting for approval',
+    messages: ['message1']
+  },
+  initiator: { _id: userId, role: ['tutor'] },
+  receiver: { _id: '123123', role: ['student'] }
+}
+
+const USER_SUBMITTED_A_REASON_FOR_DECLINING = {
+  ...cooperationData,
+  needAction: {
+    role: 'tutor',
+    type: 'waiting for answer',
+    messages: ['reason1']
+  },
+  initiator: { _id: userId, role: ['student'] },
+  receiver: { _id: '123123', role: ['tutor'] }
+}
+
 vi.mock(
   '~/containers/my-cooperations/cooperation-notes/CooperationNotes',
   () => ({
@@ -75,12 +116,18 @@ vi.mock(
 )
 
 describe('CooperationDetails', () => {
-  mockAxiosClient
-    .onGet(URLs.cooperations.getById.replace(':id', cooperationID))
-    .reply(200, cooperationMock)
+  beforeAll(() => {
+    mockAxiosClient
+      .onGet(URLs.cooperations.getById.replace(':id', cooperationID))
+      .reply(200, OPPOSITE_USER_DECIDED_TO_CLOSE_COOPERATION)
+  })
 
   beforeEach(() => {
-    renderWithProviders(<CooperationDetails />, { preloadedState: mockState })
+    renderWithProviders(<CooperationDetails />, { preloadedState: mockStateTutor })
+  })
+
+  afterAll(() => {
+    mockAxiosClient.reset()
   })
 
   it('should render details page', async () => {
@@ -92,8 +139,10 @@ describe('CooperationDetails', () => {
   })
 
   it('should show cooperation status and title', () => {
-    const title = screen.getByText(cooperationMock.title)
-    const statusChip = screen.getByText(cooperationMock.status)
+    const title = screen.getByText(
+      OPPOSITE_USER_DECIDED_TO_CLOSE_COOPERATION.title
+    )
+    const statusChip = screen.getByText('need action')
 
     expect(title).toBeInTheDocument()
     expect(statusChip).toBeInTheDocument()
@@ -127,5 +176,78 @@ describe('CooperationDetails', () => {
     cooperationNotes = screen.queryByText('Cooperation Notes')
 
     expect(cooperationNotes).not.toBeInTheDocument()
+  })
+
+  it('should render AcceptCooperationClosing modal when needAction type is "waiting for approval" and role equals users role', () => {
+    const cooperationClosingModal = screen.getByText(
+      'titles.acceptCooperationClosing'
+    )
+    expect(cooperationClosingModal).toBeInTheDocument()
+  })
+})
+
+describe('CooperationClosureDeclinedBanner without answer being submitted', () => {
+  beforeAll(() => {
+    mockAxiosClient.reset()
+    mockAxiosClient
+      .onGet(URLs.cooperations.getById.replace(':id', cooperationID))
+      .reply(200, OPPOSITE_USER_DECLINED_TO_CLOSE_COOPERATION)
+  })
+
+  beforeEach(() => {
+    renderWithProviders(<CooperationDetails />, { preloadedState: mockStateStudent })
+  })
+
+  it('should render CooperationClosureDeclinedBanner when needAction type is "waiting for answer" and role equals users role', async () => {
+    await waitFor(() => {
+      const cooperationClosingModal = screen.getByText(
+        'titles.cooperationClosureDeclined'
+      )
+      expect(cooperationClosingModal).toBeInTheDocument()
+    })
+  })
+})
+
+describe('CooperationClosureDeclinedBanner with submitted answer', () => {
+  beforeAll(() => {
+    mockAxiosClient.reset()
+    mockAxiosClient
+      .onGet(URLs.cooperations.getById.replace(':id', cooperationID))
+      .reply(200, USER_SUBMITTED_AN_ANSWER)
+  })
+
+  beforeEach(() => {
+    renderWithProviders(<CooperationDetails />, { preloadedState: mockStateTutor })
+  })
+
+  it('should render CooperationClosureDeclinedBanner when needAction type is "waiting for approval" and role is not the same as users role', async () => {
+    await waitFor(() => {
+      const cooperationClosingModal = screen.getByText(
+        'titles.cooperationClosureDeclined'
+      )
+      expect(cooperationClosingModal).toBeInTheDocument()
+    })
+  })
+})
+
+describe('AcceptCooperationClosing modal with submitted answer', () => {
+  beforeAll(() => {
+    mockAxiosClient.reset()
+    mockAxiosClient
+      .onGet(URLs.cooperations.getById.replace(':id', cooperationID))
+      .reply(200, USER_SUBMITTED_A_REASON_FOR_DECLINING)
+  })
+
+  beforeEach(() => {
+    renderWithProviders(<CooperationDetails />, { preloadedState: mockStateStudent })
+  })
+
+  it('should render AcceptCooperationClosing modal when needAction type is "waiting for answer" and role is not the same as users role', async () => {
+    await waitFor(() => {
+      const cooperationClosingModal = screen.getByText(
+        'titles.acceptCooperationClosing'
+      )
+      expect(cooperationClosingModal).toBeInTheDocument()
+    })
   })
 })
