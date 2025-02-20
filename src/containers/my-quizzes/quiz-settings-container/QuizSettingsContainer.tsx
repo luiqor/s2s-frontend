@@ -104,8 +104,6 @@ const QuizSettingsContainer = ({
 
   const isDisabled = (!id && !title) || !questions.length
 
-  const checked = !!data.view
-
   return (
     <Box component={ComponentEnum.Form} onSubmit={handleSubmit}>
       <Box>
@@ -168,7 +166,7 @@ const QuizSettingsContainer = ({
           title={t('myResourcesPage.quizzes.correctAnswers')}
         >
           <Switch
-            checked={checked}
+            checked={data.correctAnswers}
             data-testid='correctAnswers-switch'
             onChange={handleInputChange('correctAnswers')}
           />

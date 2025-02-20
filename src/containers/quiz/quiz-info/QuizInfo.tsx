@@ -5,12 +5,10 @@ import Typography from '@mui/material/Typography'
 import Button from '~/design-system/components/button/Button'
 import DividerComponent from '~/design-system/components/divider/Divider'
 import { Alert } from '@mui/material'
-import { AccessTimeRounded } from '@mui/icons-material'
 
 import QuizInfoSection from '~/containers/quiz/quiz-info-section/QuizInfoSection'
 import Timer from '~/containers/quiz/timer/Timer'
 import Points from '~/containers/quiz/points/Points'
-import QuizDialog from '~/containers/quiz/quiz-dialog/QuizDialog'
 
 import styles from '~/containers/quiz/quiz-info/QuizInfo.styles'
 import {
@@ -23,17 +21,16 @@ import {
 import { QuizAttempt, QuizTimeLimit } from '~/types'
 import { getQuizTimeLimitFields } from '~/containers/my-quizzes/quiz-settings-container/QuizSettingsContainer.constants'
 import { TFunction } from 'i18next'
-import { useState } from 'react'
 
 type ActiveQuizInfoProps = {
   questionsAnswered: number
   totalPoints: number
 }
 
-const ActiveQuizInfo = ({
+const ActiveQuizInfo: React.FC<ActiveQuizInfoProps> = ({
   questionsAnswered,
   totalPoints
-}: ActiveQuizInfoProps) => {
+}) => {
   const { t } = useTranslation()
 
   return (
@@ -69,12 +66,12 @@ type FinishedQuizInfoProps = {
   updatedAt: string
 }
 
-const FinishedQuizInfo = ({
+const FinishedQuizInfo: React.FC<FinishedQuizInfoProps> = ({
   points,
   totalPoints,
   createdAt,
   updatedAt
-}: FinishedQuizInfoProps) => {
+}) => {
   const { t } = useTranslation()
 
   return (
@@ -109,49 +106,15 @@ const FinishedQuizInfo = ({
   )
 }
 
-const UngradedQuizInfo = () => {
-  const { t } = useTranslation()
-
-  return (
-    <Box sx={styles.infoWrapper}>
-      <QuizInfoSection
-        firstColumn='May 17, 2024'
-        secondColumn='14:15'
-        title={t('quiz.attemptFinished')}
-      />
-      <Divider
-        flexItem
-        orientation='vertical'
-        sx={styles.divider}
-        variant='middle'
-      />
-      <QuizInfoSection
-        firstColumn='13:50 - 14:15'
-        secondColumn='25 min'
-        title={t('quiz.duration')}
-      />
-      <Divider
-        flexItem
-        orientation='vertical'
-        sx={styles.divider}
-        variant='middle'
-      />
-      <QuizInfoSection firstColumn='-' title={t('quiz.points')} />
-      <Box sx={styles.buttonWrapper}>
-        <Button size='sm' variant='tonal'>
-          {t('quiz.evaluate')}
-        </Button>
-      </Box>
-    </Box>
-  )
-}
-
-type GradedQuizInfoProps = {
+type TutorQuizInfoProps = {
   points: number
   totalPoints: number
 }
 
-const GradedQuizInfo = ({ points, totalPoints }: GradedQuizInfoProps) => {
+const TutorQuizInfo: React.FC<TutorQuizInfoProps> = ({
+  points,
+  totalPoints
+}) => {
   const { t } = useTranslation()
 
   return (
@@ -173,20 +136,19 @@ type StartViewQuizInfoProps = {
   attempts: QuizAttempt
   timeLimit: QuizTimeLimit
   usedAttempts: number
-  handleStartButton: (value: boolean) => void
+  onStart: () => void
 }
-const StartViewQuizInfo = ({
+
+const StartViewQuizInfo: React.FC<StartViewQuizInfoProps> = ({
   questionsAmount,
   attempts,
   timeLimit,
   usedAttempts,
-  handleStartButton
-}: StartViewQuizInfoProps) => {
+  onStart
+}) => {
   const { t } = useTranslation()
-  const [isOpen, setIsOpen] = useState(false)
 
-  const totalAttempts = attempts.split(' ')[0]
-  const timeLimitNumber = timeLimit.split(' ')[0]
+  const [totalAttempts] = attempts.split(' ')
 
   const limits = {
     isNoLimitAttempt: attempts === QuizAttempt.NoLimit,
@@ -209,10 +171,6 @@ const StartViewQuizInfo = ({
       (option) => option.value === timeLimit
     )
     return timeOption?.title ?? ''
-  }
-
-  const handleStartAttempt = () => {
-    limits.isNoLimitTime ? handleStartButton(false) : setIsOpen(true)
   }
 
   const attemptLimitOutput = !limits.isNoLimitAttempt && (
@@ -259,27 +217,8 @@ const StartViewQuizInfo = ({
     <Alert severity='info'>{t('quiz.reachedAttemptLimit')}</Alert>
   )
 
-  const handleTimeLimitModal = (isOpen: boolean, isStart: boolean) => {
-    setIsOpen(isOpen)
-    handleStartButton(isStart)
-  }
-
   return (
     <>
-      <QuizDialog
-        actionText='quiz.start'
-        description='quiz.timeLimitReminderDescription'
-        descriptionParams={{ timeLimit: timeLimitNumber }}
-        icon={<AccessTimeRounded />}
-        onAction={() => {
-          handleTimeLimitModal(false, false)
-        }}
-        onClose={() => {
-          handleTimeLimitModal(false, true)
-        }}
-        open={isOpen}
-        title='quiz.timeLimitReminderTitle'
-      />
       <Box sx={styles.infoWrapper}>
         <Box sx={styles.quizSettings}>
           <Typography sx={typographyStyle(1)}>
@@ -293,7 +232,7 @@ const StartViewQuizInfo = ({
           <Button
             data-testid='startButton'
             disabled={!hasAttempts}
-            onClick={handleStartAttempt}
+            onClick={onStart}
             size='sm'
           >
             {usedAttempts === 0 ? t('quiz.startQuiz') : t('quiz.tryAgain')}
@@ -305,10 +244,4 @@ const StartViewQuizInfo = ({
   )
 }
 
-export {
-  ActiveQuizInfo,
-  FinishedQuizInfo,
-  UngradedQuizInfo,
-  GradedQuizInfo,
-  StartViewQuizInfo
-}
+export { ActiveQuizInfo, FinishedQuizInfo, TutorQuizInfo, StartViewQuizInfo }

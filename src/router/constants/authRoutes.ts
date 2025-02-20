@@ -49,7 +49,10 @@ export const authRoutes = {
     route: 'my-cooperations/:id/lesson-details/:lessonId'
   },
   cooperationQuiz: {
-    route: 'my-cooperations/:id/quiz/:quizId'
+    route: '/my-cooperations/:id/quizzes/:quizId'
+  },
+  cooperationQuizAttempts: {
+    route: 'my-cooperations/:id/quizzes/:quizId/attempts'
   },
   accountMenu: {
     admin: {
