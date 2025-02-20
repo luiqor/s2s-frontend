@@ -184,4 +184,43 @@ describe('resourseService tests', () => {
 
      expect(updatedAttachmentResponse).toEqual(mockAttachmentResponse)
    })
+
+  it('should create a new question', async () => {
+    const newQuestionData = {
+      title: 'Counting Elephants',
+      text: 'How many elephants do you need to count to fall asleep?',
+      answers: [
+        { text: '10', isCorrect: true },
+        { text: '5', isCorrect: false },
+        { text: '15', isCorrect: false }
+      ],
+      type: 'oneAnswer',
+      author: '12345',
+      resourceType: 'question'
+    }
+
+    const mockResponse = {
+      ...newQuestionData,
+      _id: 'new-question-id',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-02-08T14:30:31.101+00:00'
+    }
+
+    mockAxiosClient
+      .onPost(URLs.resources.questions.post)
+      .reply(200, mockResponse)
+
+    const createdQuestion =
+      await ResourceService.createQuestionQuery(newQuestionData)
+
+    expect(mockAxiosClient.history.post[0].url).toBe(
+      URLs.resources.questions.post
+    )
+
+    expect(mockAxiosClient.history.post[0].data).toEqual(
+      JSON.stringify(newQuestionData)
+    )
+
+    expect(createdQuestion).toEqual(mockResponse)
+  })
 })
