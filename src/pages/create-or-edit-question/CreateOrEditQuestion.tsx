@@ -133,7 +133,9 @@ const CreateOrEditQuestion = () => {
     handleDataChange,
     handleInputChange,
     handleNonInputValueChange,
-    handleSubmit
+    handleSubmit,
+    handleErrors,
+    errors
   } = useForm<CreateOrEditQuestionForm>({
     initialValues: initialValues,
     onSubmit: async () => {
@@ -202,6 +204,8 @@ const CreateOrEditQuestion = () => {
         <Divider sx={styles.mainDivider} />
         <QuestionEditor
           data={data}
+          errors={errors}
+          handleErrors={handleErrors}
           handleInputChange={handleInputChange}
           handleNonInputValueChange={handleNonInputValueChange}
         />

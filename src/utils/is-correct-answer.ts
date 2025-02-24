@@ -10,10 +10,13 @@ export const isCorrectAnswer = (
 
   const isUnanswered =
     !userAnswer || (Array.isArray(userAnswer) && !userAnswer.length)
-
-  if (isOpenAnswer) return true
-
   if (isUnanswered) return false
+
+  if (isOpenAnswer) {
+    return question.answers.some(
+      (answer) => answer.text.trim() === String(userAnswer).trim()
+    )
+  }
 
   if (isSingleChoice) {
     const correctAnswer = question.answers.find((item) => item.isCorrect)

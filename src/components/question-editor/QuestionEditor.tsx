@@ -21,7 +21,8 @@ import Button from '~scss-components/button/Button'
 import AppSelect from '~/components/app-select/AppSelect'
 import {
   determineQuestionType,
-  sortQuestions
+  sortQuestions,
+  validateOpenAnswer
 } from '~/components/question-editor/QuestionEditor.constants'
 
 import { styles } from '~/components/question-editor/QuestionEditor.styles'
@@ -29,8 +30,11 @@ import {
   QuestionForm,
   SizeEnum,
   TextFieldVariantEnum,
-  QuestionFormAnswer
+  QuestionFormAnswer,
+  UseFormErrors
 } from '~/types'
+import { Typography } from '@mui/material'
+import { spliceSx } from '~/utils/helper-functions'
 
 interface QuestionEditorProps {
   data: QuestionForm
@@ -46,8 +50,9 @@ interface QuestionEditorProps {
   onSave?: () => Promise<void>
   loading?: boolean
   isQuizQuestion?: boolean
+  handleErrors: (key: keyof QuestionForm, error: string) => void
+  errors: UseFormErrors<QuestionForm>
 }
-
 const QuestionEditor: FC<QuestionEditorProps> = ({
   data,
   handleInputChange,
@@ -56,12 +61,14 @@ const QuestionEditor: FC<QuestionEditorProps> = ({
   onEdit,
   onSave,
   loading,
-  isQuizQuestion
+  isQuizQuestion,
+  handleErrors,
+  errors
 }) => {
   const { t } = useTranslation()
   const { openMenu, renderMenu, closeMenu } = useMenu()
 
-  const { type, text, answers, openAnswer } = data
+  const { type, text, answers } = data
   const { isMultipleChoice, isOpenAnswer, isSingleChoice } =
     determineQuestionType(type)
 
@@ -114,17 +121,19 @@ const QuestionEditor: FC<QuestionEditorProps> = ({
 
   const addNewOneAnswer = (event: MouseEvent<HTMLInputElement>) => {
     event.preventDefault()
-    if (!isEmptyAnswer) {
-      const addAnswer = [
-        ...data.answers,
-        {
-          id: data.answers.length,
-          text: '',
-          isCorrect: false
-        }
-      ]
-      handleNonInputValueChange('answers', addAnswer)
+    if (isEmptyAnswer) {
+      return
     }
+
+    handleNonInputValueChange('answers', [
+      ...data.answers,
+      {
+        id: data.answers.length,
+        text: '',
+        isCorrect: isOpenAnswer,
+        isEditing: isOpenAnswer
+      }
+    ])
   }
 
   const deleteRadioButton = (id: number) => {
@@ -169,6 +178,31 @@ const QuestionEditor: FC<QuestionEditorProps> = ({
     </Box>
   ))
 
+  const openAnswerOptions = answersWithId.map((item) => (
+    <Box key={item.id} sx={spliceSx(styles.answer, styles.openAnswer)}>
+      {item.isEditing ? (
+        <AppTextField
+          errorMsg={t(errors.answers)}
+          fullWidth
+          label={t('questionPage.answer')}
+          onBlur={() => handleBlur(item.id)}
+          onChange={(e) => onChangeInput(e, item.id)}
+          value={item.text}
+          variant={TextFieldVariantEnum.Outlined}
+        />
+      ) : (
+        <InputBase
+          fullWidth
+          onChange={(e) => onChangeInput(e, item.id)}
+          placeholder={t('questionPage.writeYourAnswer')}
+          value={item.text}
+        />
+      )}
+      <IconButton onClick={() => deleteRadioButton(item.id)}>
+        <CloseIcon fontSize={SizeEnum.Small} />
+      </IconButton>
+    </Box>
+  ))
   const showMoreMenu = renderMenu(
     <MenuItem onClick={onAction}>
       <Box sx={styles.editIconWrapper}>
@@ -178,7 +212,16 @@ const QuestionEditor: FC<QuestionEditorProps> = ({
     </MenuItem>
   )
 
-  const isButtonVisible = text && (isOpenAnswer ? openAnswer : answers[0]?.text)
+  const handleBlur = (index: number) => {
+    const updatedAnswers = [...answers]
+    if (updatedAnswers[index].text.trim() === '') {
+      handleErrors('answers', validateOpenAnswer(updatedAnswers[index].text))
+    } else {
+      updatedAnswers[index].isEditing = false
+      handleNonInputValueChange('answers', updatedAnswers)
+    }
+  }
+  const isButtonVisible = Boolean(text)
 
   return (
     <Box sx={styles.editorBlock}>
@@ -216,12 +259,22 @@ const QuestionEditor: FC<QuestionEditorProps> = ({
 
       {isSingleChoice && <RadioGroup sx={styles.group}>{options}</RadioGroup>}
 
-      {!isOpenAnswer && (
-        <Box
-          data-testid='addNewAnswerBtn'
-          onClick={addNewOneAnswer}
-          sx={styles.addRadio(isEmptyAnswer)}
-        >
+      {isOpenAnswer && openAnswerOptions}
+
+      <Box
+        data-testid='addNewAnswerBtn'
+        onClick={addNewOneAnswer}
+        sx={
+          isOpenAnswer
+            ? spliceSx(styles.addRadio(isEmptyAnswer), styles.openAnswer)
+            : styles.addRadio(isEmptyAnswer)
+        }
+      >
+        {isOpenAnswer ? (
+          <Typography color={isEmptyAnswer ? 'primary.300' : undefined}>
+            {t('questionPage.addNewOne')}
+          </Typography>
+        ) : (
           <FormControlLabel
             checked={false}
             control={isMultipleChoice ? <Checkbox /> : <RadioButton label='' />}
@@ -229,23 +282,9 @@ const QuestionEditor: FC<QuestionEditorProps> = ({
             label={t('questionPage.addNewOne')}
             value={0}
           />
-          <AddIcon
-            fontSize={SizeEnum.Small}
-            sx={styles.addIcon(isEmptyAnswer)}
-          />
-        </Box>
-      )}
-
-      {isOpenAnswer && (
-        <AppTextField
-          fullWidth
-          label={t('questionPage.answer')}
-          onChange={handleInputChange('openAnswer')}
-          value={openAnswer}
-          variant={TextFieldVariantEnum.Outlined}
-        />
-      )}
-
+        )}
+        <AddIcon fontSize={SizeEnum.Small} sx={styles.addIcon(isEmptyAnswer)} />
+      </Box>
       {onCancel && onSave && (
         <>
           <Divider sx={styles.buttonsDivider} />

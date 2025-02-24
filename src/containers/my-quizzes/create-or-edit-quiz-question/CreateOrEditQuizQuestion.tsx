@@ -1,11 +1,3 @@
-import {
-  useCallback,
-  FC,
-  useState,
-  useEffect,
-  Dispatch,
-  SetStateAction
-} from 'react'
 import Box from '@mui/material/Box'
 
 import { useModalContext } from '~/context/modal-context'
@@ -29,14 +21,15 @@ import { initialValues } from '~/containers/my-quizzes/create-or-edit-quiz-quest
 import { useAppDispatch } from '~/hooks/use-redux'
 import { openAlert } from '~/redux/features/snackbarSlice'
 import { getErrorKey } from '~/utils/get-error-key'
+import { useCallback, useEffect, useState } from 'react'
 
 interface CreateOrEditQuizQuestionProps {
   question?: Question
-  setQuestions: Dispatch<SetStateAction<Question[]>>
+  setQuestions: React.Dispatch<React.SetStateAction<Question[]>>
   onCancel: () => void
 }
 
-const CreateOrEditQuizQuestion: FC<CreateOrEditQuizQuestionProps> = ({
+const CreateOrEditQuizQuestion: React.FC<CreateOrEditQuizQuestionProps> = ({
   question,
   setQuestions,
   onCancel
@@ -112,30 +105,51 @@ const CreateOrEditQuizQuestion: FC<CreateOrEditQuizQuestionProps> = ({
     onResponseError
   })
 
-  const { data, handleInputChange, handleNonInputValueChange, handleSubmit } =
-    useForm<QuestionForm>({ initialValues: initialValues(question) })
-
-  const onCloseCreation = () => {
+  const {
+    data,
+    handleInputChange,
+    handleNonInputValueChange,
+    handleSubmit,
+    handleErrors,
+    errors
+  } = useForm<QuestionForm>({
+    initialValues: initialValues(question)
+  })
+  const onCloseCreation = useCallback(() => {
     closeModal()
     onCancel()
-  }
+  }, [closeModal, onCancel])
 
-  const onOpenCreation = ({ title, category }: QuestionModalForm) => {
-    handleNonInputValueChange('title', title)
-    handleNonInputValueChange('category', category)
-    setIsNewQuestion(true)
-    closeModal()
-  }
+  const onOpenCreation = useCallback(
+    ({ title, category }: QuestionModalForm) => {
+      handleNonInputValueChange('title', title)
+      handleNonInputValueChange('category', category)
+      setIsNewQuestion(true)
+      closeModal()
+    },
+    [closeModal, handleNonInputValueChange, setIsNewQuestion]
+  )
 
   const onCreateQuestion = async () => {
-    await createQuestion(data)
+    const updatedData = data.openAnswer
+      ? {
+          ...data,
+          answers: [
+            ...data.answers,
+            { text: data.openAnswer, isCorrect: true, id: data.answers.length }
+          ],
+          openAnswer: ''
+        }
+      : data
+
+    await createQuestion(updatedData)
   }
 
   const onUpdateQuestion = async () => {
     question && (await updateQuestion({ ...data, id: question._id }))
   }
 
-  const onOpenCreateQuestionModal = () => {
+  const onOpenCreateQuestionModal = useCallback(() => {
     openModal({
       component: (
         <CreateOrEditQuestionModal
@@ -145,7 +159,7 @@ const CreateOrEditQuizQuestion: FC<CreateOrEditQuizQuestionProps> = ({
       ),
       customCloseModal: onCancel
     })
-  }
+  }, [openModal, onCloseCreation, onOpenCreation, data, onCancel])
 
   useEffect(() => {
     !question && onOpenCreateQuestionModal()
@@ -156,6 +170,8 @@ const CreateOrEditQuizQuestion: FC<CreateOrEditQuizQuestionProps> = ({
     <Box component={ComponentEnum.Form} onSubmit={handleSubmit}>
       <QuestionEditor
         data={data}
+        errors={errors}
+        handleErrors={handleErrors}
         handleInputChange={handleInputChange}
         handleNonInputValueChange={handleNonInputValueChange}
         isQuizQuestion
