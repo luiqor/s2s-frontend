@@ -26,18 +26,32 @@ const responseCategoriesMock = {
   items: responseCategoriesItemsMock
 }
 
+const resourceCateogiresNamesMock = [
+  {
+    _id: '6502ec2060ec37be943353e2',
+    name: 'New Category 1'
+  }
+]
+
+const resourceCategoriesPostMock = {
+  _id: '650b14441e8d4a4484e2e2f5',
+  name: 'Chemical Category',
+  author: '6494128829631adbaf5cf615',
+  createdAt: '2023-20-01T13:25:36.292Z',
+  updatedAt: '2023-20-01T13:25:36.292Z'
+}
+
 describe('CategoriesContainer test', () => {
   beforeEach(() => {
     mockAxiosClient
-      .onGet(URLs.resources.resourcesCategories.get)
+      .onGet(URLs.resources.resourcesCategories.getNames)
+      .reply(200, resourceCateogiresNamesMock)
+
+    mockAxiosClient
+      .onGet(new RegExp(URLs.resources.resourcesCategories.get))
       .reply(200, responseCategoriesMock)
 
     renderWithProviders(<CategoriesContainer />)
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
-    mockAxiosClient.reset()
   })
 
   it('should render "New category" button', () => {

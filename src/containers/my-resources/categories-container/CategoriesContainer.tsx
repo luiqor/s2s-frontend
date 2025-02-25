@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Box from '@mui/material/Box'
 import AddIcon from '@mui/icons-material/Add'
@@ -12,15 +13,17 @@ import {
   useUpdateResourceCategoryMutation
 } from '~/services/resource-service'
 import MyResourcesTable from '~/containers/my-resources/my-resources-table/MyResourcesTable'
-import useAxios from '~/hooks/use-axios'
 import useMutation from '~/hooks/use-mutation'
 import useQuery from '~/hooks/use-query'
+import useSnackbarAlert from '~/hooks/use-snackbar-alert'
 import useSort from '~/hooks/table/use-sort'
 import useBreakpoints from '~/hooks/use-breakpoints'
+import { openAlert } from '~/redux/features/snackbarSlice'
+import { useAppDispatch } from '~/hooks/use-redux'
 import usePagination from '~/hooks/table/use-pagination'
 import { useModalContext } from '~/context/modal-context'
-
 import { defaultResponses, snackbarVariants } from '~/constants'
+
 import {
   initialSort,
   itemsLoadLimit,
@@ -28,19 +31,10 @@ import {
   removeColumnRules,
   validation
 } from '~/containers/my-resources/categories-container/CategoriesContainer.constansts'
-import {
-  Categories,
-  ItemsWithCount,
-  GetResourcesCategoriesParams,
-  ErrorResponse,
-  ResourcesTabsEnum
-} from '~/types'
+import { type Categories, ResourcesTabsEnum } from '~/types'
 import { adjustColumns, getScreenBasedLimit } from '~/utils/helper-functions'
 
 import { styles } from '~/containers/my-resources/categories-container/CategoriesContainer.style'
-import { useAppDispatch } from '~/hooks/use-redux'
-import { openAlert } from '~/redux/features/snackbarSlice'
-import { getErrorKey } from '~/utils/get-error-key'
 
 const CategoriesContainer = () => {
   const { t } = useTranslation()
@@ -49,27 +43,50 @@ const CategoriesContainer = () => {
   const breakpoints = useBreakpoints()
   const { page, handleChangePage } = usePagination()
   const { openModal, closeModal } = useModalContext()
-  const dispatch = useAppDispatch()
   const [selectedItemId, setSelectedItemId] = useState<string>('')
   const [updateResourceCategory] = useUpdateResourceCategoryMutation()
+  const { handleErrorAlert } = useSnackbarAlert()
+  const queryClient = useQueryClient()
+  const dispatch = useAppDispatch()
 
   const { sort } = sortOptions
   const itemsPerPage = getScreenBasedLimit(breakpoints, itemsLoadLimit)
 
-  const onResponseError = useCallback(
-    (error?: ErrorResponse) => {
-      dispatch(
-        openAlert({
-          severity: snackbarVariants.error,
-          message: getErrorKey(error)
-        })
-      )
-    },
-    [dispatch]
+  const getCategories = useCallback(() => {
+    return ResourceService.getResourcesCategories({
+      limit: itemsPerPage,
+      skip: (page - 1) * itemsPerPage,
+      sort,
+      name: searchTitle.current
+    })
+  }, [page, itemsPerPage, sort, searchTitle])
+
+  const deleteCategory = useCallback(
+    (id?: string) => ResourceService.deleteResourceCategory(id ?? ''),
+    []
   )
 
+  const {
+    error,
+    data: categories,
+    isLoading
+  } = useQuery({
+    queryFn: getCategories,
+    queryKey: ['categories', page, itemsPerPage, sort, searchTitle]
+  })
+
+  const updateInfo = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['categories'] })
+  }, [queryClient])
+
+  useEffect(() => {
+    if (error) {
+      handleErrorAlert(error)
+    }
+  }, [handleErrorAlert, error])
+
   const onResponse = useCallback(
-    (response: Categories | null) => {
+    (response: Categories) => {
       const categoryName = response ? response.name : ''
 
       dispatch(
@@ -87,54 +104,18 @@ const CategoriesContainer = () => {
     [dispatch]
   )
 
-  const getCategories = useCallback(
-    () =>
-      ResourceService.getResourcesCategories({
-        limit: itemsPerPage,
-        skip: (page - 1) * itemsPerPage,
-        sort,
-        name: searchTitle.current
-      }),
-    [page, itemsPerPage, sort, searchTitle]
-  )
-
-  const deleteCategory = useCallback(
-    (id?: string) => ResourceService.deleteResourceCategory(id ?? ''),
-    []
-  )
-
-  const { response, loading, fetchData } = useAxios<
-    ItemsWithCount<Categories>,
-    GetResourcesCategoriesParams
-  >({
-    service: getCategories,
-    defaultResponse: defaultResponses.itemsWithCount,
-    onResponseError
+  const { data: allCategoriesNames = [] } = useQuery({
+    queryKey: ['categoriesNames'],
+    queryFn: ResourceService.getResourcesCategoriesName
   })
-
-  const { data: allCategoriesNames = [], refetch: fetchAllCategoriesNames } =
-    useQuery({
-      queryKey: ['categoriesNames'],
-      queryFn: ResourceService.getResourcesCategoriesName
-    })
-
-  const onCategoryUpdate = useCallback(async () => {
-    await Promise.all([fetchData(), fetchAllCategoriesNames()])
-  }, [fetchData, fetchAllCategoriesNames])
-
-  const onCategoryCreate = useCallback(
-    async (response: Categories) => {
-      onResponse(response)
-      await Promise.all([fetchData(), fetchAllCategoriesNames()])
-    },
-    [fetchData, fetchAllCategoriesNames, onResponse]
-  )
 
   const { mutate: handleCreateCategory } = useMutation({
     mutationFn: ResourceService.createResourceCategory,
-    onSuccess: onCategoryCreate,
-    onError: onResponseError
+    onError: handleErrorAlert,
+    onSuccess: onResponse,
+    queryKey: ['categories']
   })
+
   const existingCategoriesNames = allCategoriesNames?.map((item) => item.name)
 
   const onAdd = () => {
@@ -151,7 +132,7 @@ const CategoriesContainer = () => {
   const onSave = async (name: string) => {
     if (name) {
       await updateResourceCategory({ id: selectedItemId, name })
-      await onCategoryUpdate()
+      await updateInfo()
     }
     setSelectedItemId('')
   }
@@ -172,7 +153,10 @@ const CategoriesContainer = () => {
   const props = {
     actions: { onEdit },
     columns: columnsToShow,
-    data: { response, getData: onCategoryUpdate },
+    data: {
+      response: categories ?? defaultResponses.itemsWithCount,
+      getData: updateInfo
+    },
     services: { deleteService: deleteCategory },
     pagination: { page, onChange: handleChangePage },
     sort: sortOptions,
@@ -190,11 +174,11 @@ const CategoriesContainer = () => {
             {t('myResourcesPage.categories.addBtn')}
           </Button>
         }
-        fetchData={fetchData}
+        fetchData={updateInfo}
         placeholder={'myResourcesPage.categories.searchInput'}
         searchRef={searchTitle}
       />
-      {loading ? (
+      {isLoading || !categories ? (
         <Loader pageLoad size={50} />
       ) : (
         <MyResourcesTable<Categories> {...props} />
