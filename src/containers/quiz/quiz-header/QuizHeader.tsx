@@ -17,6 +17,9 @@ type QuizHeaderProps = {
   questionsAnswered?: number
   createdAt: string
   updatedAt: string
+  hasTimeLimit?: boolean
+  initialTime?: number
+  onTimeEnd?: () => void
   type: 'active' | 'finished' | 'tutor'
 }
 
@@ -28,12 +31,18 @@ const QuizHeader: React.FC<QuizHeaderProps> = ({
   questionsAnswered,
   createdAt,
   updatedAt,
-  type
+  hasTimeLimit = false,
+  initialTime = 0,
+  type,
+  onTimeEnd
 }) => {
   const getQuizInfoVariant = () => {
     if (type === 'active') {
       return (
         <ActiveQuizInfo
+          hasTimeLimit={hasTimeLimit}
+          initialTime={initialTime}
+          onTimeEnd={onTimeEnd}
           questionsAnswered={questionsAnswered ?? 0}
           totalPoints={totalPoints}
         />

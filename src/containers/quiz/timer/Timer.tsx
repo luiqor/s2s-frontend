@@ -1,30 +1,34 @@
 import Chip from '@mui/material/Chip/Chip'
 import TimerOutlined from '@mui/icons-material/TimerOutlined'
 
+import useTimer from '~/hooks/use-timer'
+
 import styles from '~/containers/quiz/timer/Timer.styles'
 
 type TimerProps = {
-  label: string
-  isTimeEnds: boolean
+  initialTime: number
+  onTimeEnd?: () => void
 }
 
-const Timer: React.FC<TimerProps> = ({ label, isTimeEnds }) => {
+const Timer: React.FC<TimerProps> = ({ initialTime, onTimeEnd }) => {
+  const { time, isTimeRunningOut } = useTimer({ initialTime, onTimeEnd })
+
   return (
     <Chip
-      color={isTimeEnds ? 'error' : 'success'}
+      color={isTimeRunningOut ? 'error' : 'success'}
       icon={
         <TimerOutlined
-          sx={isTimeEnds ? styles.errorTimer : styles.successTimer}
+          sx={isTimeRunningOut ? styles.errorTimer : styles.successTimer}
         />
       }
-      label={label}
+      label={time}
       size='medium'
       sx={{
         ...styles.chip,
-        ...(isTimeEnds ? styles.errorChip : styles.successChip),
+        ...(isTimeRunningOut ? styles.errorChip : styles.successChip),
         '& .MuiChip-label': {
           ...styles.label,
-          ...(isTimeEnds ? styles.errorLabel : styles.successLabel)
+          ...(isTimeRunningOut ? styles.errorLabel : styles.successLabel)
         }
       }}
       variant='outlined'

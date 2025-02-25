@@ -1,6 +1,6 @@
 import { SxProps, Theme } from '@mui/material'
 import i18next from 'i18next'
-import { differenceInMinutes, format } from 'date-fns'
+import { differenceInMinutes, format, intervalToDuration } from 'date-fns'
 import {
   Breakpoints,
   ConvertedSize,
@@ -18,8 +18,10 @@ import {
   Attachment,
   GroupedByDateItems,
   Question,
-  Categories
+  Categories,
+  type QuizTimeLimit
 } from '~/types'
+import { ONE_MINUTE, ONE_HOUR } from '~/constants'
 
 export const parseJwt = <T,>(token: string): T => {
   const base64Url = token.split('.')[1]
@@ -323,4 +325,26 @@ export const formatTime = (date: string) => {
 
 export const formatTimeDifference = (startDate: string, endDate: string) => {
   return differenceInMinutes(new Date(endDate), new Date(startDate))
+}
+
+export const formatDuration = (ms: number) => {
+  const {
+    hours = 0,
+    minutes = 0,
+    seconds = 0
+  } = intervalToDuration({ start: 0, end: ms })
+
+  return [hours, minutes, seconds]
+    .map((unit) => String(unit).padStart(2, '0'))
+    .join(':')
+}
+
+export const getTime = (timeLimit: QuizTimeLimit) => {
+  const parsedTimeLimit = parseInt(timeLimit)
+
+  if (isNaN(parsedTimeLimit)) {
+    return -1
+  }
+
+  return parsedTimeLimit === 1 ? ONE_HOUR : parsedTimeLimit * ONE_MINUTE
 }

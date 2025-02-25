@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 
@@ -25,7 +25,13 @@ import styles from '~/pages/quiz/Quiz.styles'
 import { defaultResponses } from '~/constants'
 import { defaultQuizResponse } from '~/pages/quiz/Quiz.constant'
 
-import { ComponentEnum, QuestionTypesEnum, QuizViewEnum } from '~/types'
+import {
+  ComponentEnum,
+  QuestionTypesEnum,
+  QuizTimeLimit,
+  QuizViewEnum
+} from '~/types'
+import { getTime } from '~/utils/helper-functions'
 
 type ActiveQuizProps = {
   finishQuiz: (quizId: string) => void
@@ -38,6 +44,7 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ finishQuiz }) => {
   const { t } = useTranslation()
 
   const [isOpen, setIsOpen] = useState(false)
+  const [finishedQuizId, setFinishedQuizId] = useState('')
 
   const { handleInputChange, handleNonInputValueChange, data } = useForm<
     Record<string, string | string[]>
@@ -51,12 +58,8 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ finishQuiz }) => {
 
   const { quiz, isLoading } = useQuizQuery(quizId)
 
-  const openModal = useCallback(() => {
-    setIsOpen(true)
-  }, [])
-
   const {
-    settings: { scoredResponses, view },
+    settings: { scoredResponses, view, timeLimit },
     description,
     title,
     items,
@@ -64,37 +67,58 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ finishQuiz }) => {
     updatedAt
   } = quiz ?? defaultQuizResponse
 
-  const isStepper = view === QuizViewEnum.Stepper
+  const hasTimeLimit = timeLimit !== QuizTimeLimit.NoLimit
 
-  const questionsBlock = isStepper ? (
-    <SelectableQuestionQuizView
-      answers={data}
-      handleInputChange={handleInputChange}
-      handleNonInputValueChange={handleNonInputChange}
-      isEditable
-      questions={items}
-      sx={styles.selectableQuestionQuizWrapper}
-    />
-  ) : (
-    <ScrollQuestionsQuizView
-      answers={data}
-      handleInputChange={handleInputChange}
-      handleNonInputValueChange={handleNonInputChange}
-      isEditable
-      questions={items}
-    />
-  )
+  const initialTime = useMemo(() => {
+    return getTime(timeLimit ?? QuizTimeLimit.NoLimit)
+  }, [timeLimit])
 
   const points = countPoints(
     items.filter(({ type }) => type !== QuestionTypesEnum.OpenAnswer),
     data
   )
 
+  const openModal = useCallback(() => {
+    setIsOpen(true)
+  }, [])
+
+  const grade = Math.round((points / items.length) * 100)
+
+  const mappedResults = useMemo(() => {
+    return items.map(({ text, answers, _id }) => {
+      return {
+        question: text,
+        answers: answers.map(({ text, isCorrect }) => {
+          return {
+            text,
+            isCorrect,
+            isChosen: data[_id]?.includes(text) ?? false
+          }
+        })
+      }
+    })
+  }, [data, items])
+
   const addFinishedQuiz = useCallback(() => {
     return ResourceService.addFinishedQuiz({
       cooperation: cooperationId,
       quiz: quizId,
-      grade: Math.round((points / items.length) * 100),
+      grade,
+      results: mappedResults
+    })
+  }, [cooperationId, grade, mappedResults, quizId])
+
+  const { handleErrorAlert } = useSnackbarAlert()
+
+  const { mutateAsync: createFinishedQuiz } = useMutation({
+    mutationFn: addFinishedQuiz,
+    queryKey: ['finished-quizzes'],
+    onError: handleErrorAlert
+  })
+
+  const editFinishedQuiz = useCallback(() => {
+    return ResourceService.editFinishedQuiz(finishedQuizId, {
+      grade,
       results: items.map(({ text, answers, _id }) => {
         return {
           question: text,
@@ -108,30 +132,65 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ finishQuiz }) => {
         }
       })
     })
-  }, [data, cooperationId, items, points, quizId])
+  }, [data, finishedQuizId, grade, items])
 
-  const { handleErrorAlert } = useSnackbarAlert()
-
-  const { mutateAsync } = useMutation({
-    mutationFn: addFinishedQuiz,
+  const { mutate: updateFinishedQuiz } = useMutation({
+    mutationFn: editFinishedQuiz,
     queryKey: ['finished-quizzes'],
     onError: handleErrorAlert
   })
+
+  const isStepper = view === QuizViewEnum.Stepper
+
+  const questionsBlock = isStepper ? (
+    <SelectableQuestionQuizView
+      answers={data}
+      handleInputChange={handleInputChange}
+      handleNonInputValueChange={handleNonInputChange}
+      isEditable
+      onNextButtonClick={updateFinishedQuiz}
+      questions={items}
+      sx={styles.selectableQuestionQuizWrapper}
+    />
+  ) : (
+    <ScrollQuestionsQuizView
+      answers={data}
+      handleInputChange={handleInputChange}
+      handleNonInputValueChange={handleNonInputChange}
+      isEditable
+      questions={items}
+    />
+  )
 
   const handleCancel = useCallback(() => {
     setIsOpen(false)
   }, [])
 
-  const handleFinish = useCallback(async () => {
-    const finishedQuiz = await mutateAsync()
+  const handleFinish = useCallback(() => {
+    updateFinishedQuiz()
     setIsOpen(false)
-    finishQuiz(finishedQuiz?._id)
+    finishQuiz(finishedQuizId)
     if (!scoredResponses) {
       navigate(-1)
     }
-  }, [finishQuiz, mutateAsync, navigate, scoredResponses])
+  }, [
+    finishedQuizId,
+    scoredResponses,
+    updateFinishedQuiz,
+    finishQuiz,
+    navigate
+  ])
 
   const questionsAnswered = Object.keys(data).length
+
+  useEffect(() => {
+    const postFinishedQuiz = async () => {
+      const finishedQuiz = await createFinishedQuiz()
+      setFinishedQuizId(finishedQuiz?._id)
+    }
+
+    void postFinishedQuiz()
+  }, [createFinishedQuiz])
 
   if (isLoading || !quiz) {
     return <Loader pageLoad />
@@ -139,17 +198,20 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ finishQuiz }) => {
 
   return (
     <PageWrapper sx={styles.quizzesWrapper}>
-      <QuizHeader
-        createdAt={createdAt}
-        description={description}
-        points={points}
-        questionsAnswered={questionsAnswered}
-        title={title}
-        totalPoints={items.length}
-        type='active'
-        updatedAt={updatedAt}
-      />
       <Box component={ComponentEnum.Form} sx={styles.quizzesWrapper}>
+        <QuizHeader
+          createdAt={createdAt}
+          description={description}
+          hasTimeLimit={hasTimeLimit}
+          initialTime={initialTime}
+          onTimeEnd={handleFinish}
+          points={points}
+          questionsAnswered={questionsAnswered}
+          title={title}
+          totalPoints={items.length}
+          type='active'
+          updatedAt={updatedAt}
+        />
         <Divider sx={styles.divider} />
         {questionsBlock}
         <Box sx={styles.finishBlock.root}>
@@ -160,7 +222,7 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ finishQuiz }) => {
       </Box>
       <FinishQuizModal
         onCancel={handleCancel}
-        onFinish={() => void handleFinish()}
+        onFinish={handleFinish}
         open={isOpen}
       />
     </PageWrapper>
@@ -250,16 +312,16 @@ const FinishedQuiz: React.FC<FinishedQuizProps> = ({ finishedQuizId }) => {
 
   return (
     <PageWrapper sx={styles.quizzesWrapper}>
-      <QuizHeader
-        createdAt={finishedQuiz.createdAt}
-        description={description}
-        points={items.length}
-        title={title}
-        totalPoints={finishedQuiz.results?.length}
-        type='finished'
-        updatedAt={finishedQuiz.updatedAt}
-      />
       <Box component={ComponentEnum.Form} sx={styles.quizzesWrapper}>
+        <QuizHeader
+          createdAt={finishedQuiz.createdAt}
+          description={description}
+          points={items.length}
+          title={title}
+          totalPoints={finishedQuiz.results?.length}
+          type='finished'
+          updatedAt={finishedQuiz.updatedAt}
+        />
         <Divider sx={styles.divider} />
         {questionsBlock}
       </Box>
@@ -312,17 +374,17 @@ const TutorQuiz: React.FC = () => {
 
   return (
     <PageWrapper sx={styles.quizzesWrapper}>
-      <QuizHeader
-        createdAt={''}
-        description={''}
-        points={0}
-        questionsAnswered={0}
-        title={''}
-        totalPoints={0}
-        type='tutor'
-        updatedAt={''}
-      />
       <Box component={ComponentEnum.Form} sx={styles.quizzesWrapper}>
+        <QuizHeader
+          createdAt={''}
+          description={''}
+          points={0}
+          questionsAnswered={0}
+          title={''}
+          totalPoints={0}
+          type='tutor'
+          updatedAt={''}
+        />
         <Divider sx={styles.divider} />
         {questionsBlock}
       </Box>
