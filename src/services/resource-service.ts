@@ -142,11 +142,7 @@ export const ResourceService = {
       })
     })
   },
-  getAttachments: async (
-    params?: GetResourcesParams
-  ): Promise<AxiosResponse<ItemsWithCount<Attachment>>> =>
-    await axiosClient.get(URLs.resources.attachments.get, { params }),
-  getAttachmentsQuery: (params?: GetResourcesParams) => {
+  getAttachments: (params: GetResourcesParams) => {
     return baseService.request<ItemsWithCount<Attachment>>({
       method: 'GET',
       url: getFullUrl({
@@ -155,13 +151,7 @@ export const ResourceService = {
       })
     })
   },
-  updateAttachment: async (params?: UpdateAttachmentParams) => {
-    return await axiosClient.patch(
-      createUrlPath(URLs.resources.attachments.patch, params?.id),
-      params
-    )
-  },
-  updateAttachmentQuery: (data: UpdateAttachmentParams) => {
+  updateAttachment: (data: UpdateAttachmentParams) => {
     const { id, ...attachmentData } = data
 
     return baseService.request<Attachment>({
@@ -178,9 +168,11 @@ export const ResourceService = {
       createUrlPath(URLs.resources.attachments.delete, id)
     )
   },
-  createAttachments: (data?: FormData): Promise<AxiosResponse> => {
-    return axiosClient.post(URLs.attachments.post, data, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+  createAttachment: (data: FormData) => {
+    return baseService.request<Attachment>({
+      method: 'POST',
+      url: URLs.resources.attachments.post,
+      data
     })
   },
   getQuestions: (

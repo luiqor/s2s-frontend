@@ -44,7 +44,7 @@ import {
 } from '~/types'
 import useSnackbarAlert from '~/hooks/use-snackbar-alert'
 
-const CreateOrEditLesson = () => {
+const CreateOrEditLesson: React.FC = () => {
   const { t } = useTranslation()
 
   const { openModal } = useModalContext()
@@ -78,7 +78,7 @@ const CreateOrEditLesson = () => {
           columns={columns}
           onAddResources={handleAddAttachments}
           removeColumnRules={removeColumnRules}
-          requestService={ResourceService.getAttachmentsQuery}
+          requestService={ResourceService.getAttachments}
           resourceTab={ResourcesTabsEnum.Attachments}
           resources={data.attachments}
         />

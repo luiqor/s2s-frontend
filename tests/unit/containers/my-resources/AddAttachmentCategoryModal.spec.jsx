@@ -1,5 +1,9 @@
 import { screen, fireEvent } from '@testing-library/react'
-import { renderWithProviders, mockAxiosClient } from '~tests/test-utils'
+import {
+  renderWithProviders,
+  mockAxiosClient,
+  selectOption
+} from '~tests/test-utils'
 import { afterEach, beforeEach, describe, expect } from 'vitest'
 
 import AddAttachmentCategoryModal from '~/containers/my-resources/add-attachment-category-modal/AddAttachmentCategoryModal'
@@ -35,7 +39,7 @@ describe('AddAttachmentCategoryModal component', () => {
       <AddAttachmentCategoryModal
         attachment={attachmentMock}
         closeModal={closeModalMock}
-        updateAttachmentCategory={updateAttachmentCategory}
+        onAttachmentUpdate={updateAttachmentCategory}
       />
     )
   })
@@ -50,26 +54,28 @@ describe('AddAttachmentCategoryModal component', () => {
     expect(title).toBeInTheDocument()
   })
 
-  it('should render save button and click on it', () => {
-    const saveBtn = screen.getByText('common.save')
-
+  it('should render save button and click on it if category was changed', async () => {
+    const saveBtn = screen.getByRole('button', { name: 'common.save' })
     expect(saveBtn).toBeInTheDocument()
+
+    await selectOption(
+      screen.getByRole('combobox'),
+      categoriesNamesMock[0].name
+    )
 
     fireEvent.click(saveBtn)
 
     expect(updateAttachmentCategory).toHaveBeenCalled()
   })
 
-  it('should change category', () => {
-    const categoryDropbox = screen.getByRole('combobox')
+  it('should render disabled save button by default', () => {
+    const saveBtn = screen.getByRole('button', { name: 'common.save' })
 
-    fireEvent.click(categoryDropbox)
-    fireEvent.change(categoryDropbox, {
-      target: { value: categoriesNamesMock[1].name }
-    })
-    fireEvent.keyDown(categoryDropbox, { key: 'ArrowDown' })
-    fireEvent.keyDown(categoryDropbox, { key: 'Enter' })
-
-    expect(categoryDropbox.value).toBe(categoriesNamesMock[1].name)
+    expect(saveBtn).toBeInTheDocument()
+    
+    fireEvent.click(saveBtn)
+    
+    expect(saveBtn).toBeDisabled()
+    expect(updateAttachmentCategory).not.toHaveBeenCalled()
   })
 })

@@ -1,4 +1,4 @@
-import { FC, ReactElement, useEffect, useState } from 'react'
+import { ReactElement, useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import { SxProps } from '@mui/material'
 
@@ -8,15 +8,14 @@ import { useAppDispatch } from '~/hooks/use-redux'
 import { validationData } from '~/containers/add-documents/AddDocuments.constants'
 import { styles } from '~/containers/add-documents/AddDocuments.styles'
 import { snackbarVariants } from '~/constants'
-import { ButtonVariantEnum, UploadFileEmitter } from '~/types'
+import type { UploadFileEmitter } from '~/types'
 import { spliceSx } from '~/utils/helper-functions'
 import { openAlert } from '~/redux/features/snackbarSlice'
 
 interface AddDocumentsProps {
-  fetchData: (formData: FormData) => Promise<void>
+  onCreateDocument: (formData: FormData) => void
   formData: FormData
   buttonText: string
-  variant?: ButtonVariantEnum
   sx?: {
     root?: SxProps
     button?: SxProps
@@ -25,11 +24,10 @@ interface AddDocumentsProps {
   removePreviousFiles?: boolean
 }
 
-const AddDocuments: FC<AddDocumentsProps> = ({
-  fetchData,
+const AddDocuments: React.FC<AddDocumentsProps> = ({
+  onCreateDocument,
   formData,
   buttonText,
-  variant,
   sx = {},
   icon,
   removePreviousFiles = false
@@ -58,7 +56,7 @@ const AddDocuments: FC<AddDocumentsProps> = ({
       formData.append('files', file)
     }
 
-    !error && void fetchData(formData)
+    !error && onCreateDocument(formData)
     removePreviousFiles && setDocuments([])
   }
 
@@ -75,7 +73,6 @@ const AddDocuments: FC<AddDocumentsProps> = ({
           button: spliceSx(styles.fileUpload.button, sx?.button)
         }}
         validationData={validationData}
-        variant={variant}
       />
     </Box>
   )

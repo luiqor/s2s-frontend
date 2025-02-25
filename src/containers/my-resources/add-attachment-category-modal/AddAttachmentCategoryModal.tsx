@@ -1,4 +1,3 @@
-import { FC, SyntheticEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -22,33 +21,30 @@ import {
 interface AddAttachmentCategoryModalProps {
   closeModal: () => void
   attachment: Attachment
-  updateAttachmentCategory: (
-    params?: UpdateAttachmentParams | undefined
-  ) => Promise<void>
+  onAttachmentUpdate: (params: UpdateAttachmentParams) => void
 }
 
-const AddAttachmentCategoryModal: FC<AddAttachmentCategoryModalProps> = ({
+const AddAttachmentCategoryModal: React.FC<AddAttachmentCategoryModalProps> = ({
   closeModal,
   attachment,
-  updateAttachmentCategory
+  onAttachmentUpdate
 }) => {
   const { t } = useTranslation()
-
-  const [loading, setLoading] = useState<boolean>(false)
 
   const { data, errors, handleNonInputValueChange, handleBlur, handleSubmit } =
     useForm<UpdateAttachmentParams>({
       initialValues: getInitialValues(attachment),
-      onSubmit: async () => {
-        setLoading(true)
-        await updateAttachmentCategory(data)
-        setLoading(false)
+      onSubmit: () => {
+        onAttachmentUpdate({
+          id: attachment._id,
+          category: data.category
+        })
         closeModal()
       }
     })
 
   const onCategoryChange = (
-    _: SyntheticEvent,
+    _: React.SyntheticEvent,
     value: CategoryNameInterface | null
   ) => {
     handleNonInputValueChange('category', value?._id ?? null)
@@ -86,8 +82,7 @@ const AddAttachmentCategoryModal: FC<AddAttachmentCategoryModalProps> = ({
           {t('common.cancel')}
         </Button>
         <Button
-          disabled={!!errors.fileName}
-          loading={loading}
+          disabled={Boolean(errors.fileName) || !data.category}
           sx={styles.saveBtn}
           type={ButtonTypeEnum.Submit}
         >

@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react'
+import { vi } from 'vitest'
 import AttachmentsContainer from '~/containers/my-resources/attachments-container/AttachmentsContainer'
-import { mockAxiosClient, renderWithProviders } from '~tests/test-utils'
+import { renderWithProviders, mockAxiosClient } from '~tests/test-utils'
 import { URLs } from '~/constants/request'
 
 vi.mock(
@@ -57,7 +58,7 @@ const attachmentMockData = {
 describe('AttachmentContainer renders correct data', () => {
   beforeEach(() => {
     mockAxiosClient
-      .onGet(URLs.resources.attachments.get)
+      .onGet(new RegExp(URLs.resources.attachments.get))
       .reply(200, attachmentMockData)
 
     renderWithProviders(<AttachmentsContainer />)
