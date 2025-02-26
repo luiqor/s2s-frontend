@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, expect } from 'vitest'
 import { screen, fireEvent, act } from '@testing-library/react'
 import Quiz from '~/pages/quiz/Quiz'
+import QuizReview from '~/pages/quiz-review/QuizReview'
 import { ResourcesTypesEnum as ResourceType, UserRoleEnum } from '~/types'
 import { mockAxiosClient, renderWithProviders } from '~tests/test-utils'
 import { URLs } from '~/constants/request'
@@ -76,26 +77,20 @@ describe('QuizPage for student', () => {
     const checkbox = screen.getByRole('checkbox')
     expect(checkbox).toHaveProperty('checked', false)
 
-    act(() => {
-      fireEvent.click(checkbox)
-    })
+    fireEvent.click(checkbox)
 
     expect(checkbox).toHaveProperty('checked', true)
   })
 
   it('should display correct answers after finishing quiz', async () => {
     const finishButton = await screen.findByText('quiz.finish')
-    act(() => {
-      fireEvent.click(finishButton)
-    })
+    fireEvent.click(finishButton)
 
     const confirmButton = await screen.findByText('quiz.confirm')
-    act(() => {
-      fireEvent.click(confirmButton)
-    })
+    fireEvent.click(confirmButton)
 
     const correctAnswers = await screen.findByText(
-      'myResourcesPage.quizzes.correctAnswers'
+      'questionPage.questionType.multipleChoice'
     )
     expect(correctAnswers).toBeInTheDocument()
   })

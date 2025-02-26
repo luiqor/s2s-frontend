@@ -19,7 +19,7 @@ import { getFullUrl } from '~/utils/get-full-url'
 import useQuery from '~/hooks/use-query'
 
 import { ResourceService } from '~/services/resource-service'
-import styles from '~/pages/quiz-preview/QuizAttempts.styles'
+import styles from '~/pages/quiz-attempts/QuizAttempts.styles'
 import { defaultQuizResponse } from '~/pages/quiz/Quiz.constant'
 
 import { formatTime, getFormattedDate } from '~/utils/helper-functions'
@@ -76,6 +76,15 @@ const QuizAttemptsPage: React.FC = () => {
     setIsOpen(false)
   }
 
+  const handleReviewAttempt = (attemptId: string) => {
+    navigate(
+      getFullUrl({
+        pathname: authRoutes.cooperationQuizReview.route,
+        parameters: { id: cooperationId, quizId, attemptId }
+      })
+    )
+  }
+
   const attemptsList =
     finishedQuizzes.length !== 0 ? (
       finishedQuizzes.map((item) => {
@@ -86,7 +95,12 @@ const QuizAttemptsPage: React.FC = () => {
               secondColumn={formatTime(item.updatedAt)}
               title={t('quiz.attemptFinished')}
             />
-            <Button variant='tonal'>{t('quiz.reviewAttempt')}</Button>
+            <Button
+              onClick={() => handleReviewAttempt(item._id)}
+              variant='tonal'
+            >
+              {t('quiz.reviewAttempt')}
+            </Button>
           </Box>
         )
       })

@@ -32,12 +32,10 @@ import {
   QuizViewEnum
 } from '~/types'
 import { getTime } from '~/utils/helper-functions'
+import { authRoutes } from '~/router/constants/authRoutes'
+import { getFullUrl } from '~/utils/get-full-url'
 
-type ActiveQuizProps = {
-  finishQuiz: (quizId: string) => void
-}
-
-const ActiveQuiz: React.FC<ActiveQuizProps> = ({ finishQuiz }) => {
+const ActiveQuiz: React.FC = () => {
   const { id: cooperationId = '', quizId = '' } = useParams()
   const navigate = useNavigate()
 
@@ -59,7 +57,7 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ finishQuiz }) => {
   const { quiz, isLoading } = useQuizQuery(quizId)
 
   const {
-    settings: { scoredResponses, view, timeLimit },
+    settings: { view, scoredResponses, timeLimit },
     description,
     title,
     items,
@@ -169,16 +167,24 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ finishQuiz }) => {
   const handleFinish = useCallback(() => {
     updateFinishedQuiz()
     setIsOpen(false)
-    finishQuiz(finishedQuizId)
-    if (!scoredResponses) {
+
+    if (scoredResponses) {
+      navigate(
+        getFullUrl({
+          pathname: authRoutes.cooperationQuizReview.route,
+          parameters: { id: cooperationId, quizId, attemptId: finishedQuizId }
+        })
+      )
+    } else {
       navigate(-1)
     }
   }, [
-    finishedQuizId,
     scoredResponses,
-    updateFinishedQuiz,
-    finishQuiz,
-    navigate
+    cooperationId,
+    quizId,
+    finishedQuizId,
+    navigate,
+    updateFinishedQuiz
   ])
 
   const questionsAnswered = Object.keys(data).length
@@ -251,7 +257,7 @@ const FinishedQuiz: React.FC<FinishedQuizProps> = ({ finishedQuizId }) => {
   }
 
   const { data: finishedQuiz, isLoading: isFinishedQuizLoading } = useQuery({
-    queryKey: ['finishedQuiz', finishedQuizId],
+    queryKey: ['finished-quizzes', finishedQuizId],
     queryFn: getFinishedQuiz
   })
 
@@ -271,6 +277,7 @@ const FinishedQuiz: React.FC<FinishedQuizProps> = ({ finishedQuizId }) => {
     finishedQuiz?.results?.forEach(({ question, answers }) => {
       const quizQuestion = quiz?.items.find((item) => item.text === question)
       const quizQuestionId = quizQuestion?._id
+
       if (quizQuestionId) {
         const chosenAnswers = answers.filter((answer) => answer.isChosen)
         const textAnswers = chosenAnswers.map(

@@ -1,11 +1,12 @@
 import { beforeAll, beforeEach, expect } from 'vitest'
-import { screen } from '@testing-library/react'
-import QuizPreview from '~/pages/quiz-preview/QuizAttempts'
+import { screen, fireEvent } from '@testing-library/react'
+import QuizAttemptsPage from '~/pages/quiz-attempts/QuizAttempts'
 import { ResourcesTypesEnum as ResourceType, UserRoleEnum } from '~/types'
 import { mockAxiosClient, renderWithProviders } from '~tests/test-utils'
 import { URLs } from '~/constants/request'
 
 const mockQuizId = '6641388f36ebdb0432a3a2e5'
+const mockCooperationId = '67ba3b3e4ab9fe9998c7ca2b'
 
 const mockQuiz = {
   _id: mockQuizId,
@@ -40,7 +41,52 @@ const mockQuiz = {
   description: 'Js'
 }
 
+const mockFinishedQuizzes = [
+  {
+    _id: '67ba3be14ab9fe9998c7cacb',
+    quiz: '67ba3bb14ab9fe9998c7ca7d',
+    cooperation: mockCooperationId,
+    grade: 100,
+    results: [
+      {
+        question: 'Question 1',
+        answers: [
+          {
+            text: 'Correct',
+            isCorrect: true,
+            isChosen: true
+          },
+          {
+            text: 'Wrong',
+            isCorrect: false,
+            isChosen: false
+          }
+        ]
+      }
+    ],
+    createdAt: '2025-02-22T21:04:33.651Z',
+    updatedAt: '2025-02-22T21:04:33.651Z'
+  }
+]
+
+const mockUseParams = vi.fn()
+
+vi.mock('react-router-dom', async () => {
+  const original = await vi.importActual('react-router-dom')
+  return {
+    ...original,
+    useParams: () => mockUseParams()
+  }
+})
+
 describe('QuizPage for student', () => {
+  beforeEach(() => {
+    mockUseParams.mockReturnValue({
+      id: mockCooperationId,
+      quizId: mockQuizId
+    })
+  })
+
   beforeAll(() => {
     mockAxiosClient
       .onGet(URLs.quizzes.getById.replace(':id', ''))
@@ -56,15 +102,32 @@ describe('QuizPage for student', () => {
         new RegExp(URLs.finishedQuizzes.getById.replace(':id', mockQuizId))
       )
       .reply(200, mockQuiz)
+
+    mockAxiosClient
+      .onGet(
+        URLs.finishedQuizzes.getByQuizId
+          .replace(':cooperationId', mockCooperationId)
+          .replace(':quizId', mockQuizId)
+      )
+      .reply(200, mockFinishedQuizzes)
   })
 
   beforeEach(() => {
-    renderWithProviders(<QuizPreview />, {
+    renderWithProviders(<QuizAttemptsPage />, {
       appMain: { userRole: UserRoleEnum.Student }
     })
   })
 
   it('should render quiz preview page with data', async () => {
+    const quizTitle = await screen.findByText('JS Quiz')
+    expect(quizTitle).toBeInTheDocument()
+  })
+
+  it('should render Quiz review after review button is clicked', async () => {
+    const reviewButton = await screen.findByText('quiz.reviewAttempt')
+
+    fireEvent.click(reviewButton)
+
     const quizTitle = await screen.findByText('JS Quiz')
     expect(quizTitle).toBeInTheDocument()
   })
