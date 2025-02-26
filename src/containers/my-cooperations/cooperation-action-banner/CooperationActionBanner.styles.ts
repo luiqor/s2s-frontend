@@ -6,11 +6,13 @@ export const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    rowGap: '20px',
+    rowGap: '16px',
     padding: '24px',
-    border: `1px solid ${palette.basic.pinkishRed}`,
+    borderTop: `4px solid ${palette.basic.mediumRed}`,
     borderRadius: '5px',
-    backgroundColor: palette.basic.softGray
+    backgroundColor: palette.basic.softWhite,
+    boxShadow:
+      '0px 8px 16px rgba(0, 0, 0, 0.1), 0px 0px 6px rgba(0, 0, 0, 0.08)'
   },
   header: {
     display: 'flex',
@@ -18,8 +20,12 @@ export const styles = {
     columnGap: '8px',
     color: palette.basic.mediumRed
   },
+  headerText: {
+    fontWeight: 'medium',
+    fontSize: '18px'
+  },
   description: {
-    color: palette.basic.darkGray,
+    color: palette.basic.lightBlue,
     marginTop: '4px'
   },
   mainContentWrapper: {
