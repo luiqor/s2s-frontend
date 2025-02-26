@@ -1,27 +1,22 @@
+import { useImperativeHandle, forwardRef, useCallback } from 'react'
 import Box from '@mui/material/Box'
 
 import { useModalContext } from '~/context/modal-context'
+import useSnackbarAlert from '~/hooks/use-snackbar-alert'
 import { ResourceService } from '~/services/resource-service'
 import useForm from '~/hooks/use-form'
-import useAxios from '~/hooks/use-axios'
+import useMutation from '~/hooks/use-mutation'
 import QuestionEditor from '~/components/question-editor/QuestionEditor'
 import CreateOrEditQuestionModal from '~/containers/my-resources/create-or-edit-question-modal/CreateOrEditQuestionModal'
 
-import { getErrorMessage } from '~/utils/error-with-message'
 import { snackbarVariants } from '~/constants'
 import {
   ComponentEnum,
-  ErrorResponse,
-  Question,
-  QuestionForm,
-  QuestionModalForm,
-  UpdateQuestionParams
+  type Question,
+  type QuestionForm,
+  type QuestionModalForm
 } from '~/types'
 import { initialValues } from '~/containers/my-quizzes/create-or-edit-quiz-question/CreateOrEditQuizQuestion.constants'
-import { useAppDispatch } from '~/hooks/use-redux'
-import { openAlert } from '~/redux/features/snackbarSlice'
-import { getErrorKey } from '~/utils/get-error-key'
-import { useCallback, useEffect, useState } from 'react'
 
 interface CreateOrEditQuizQuestionProps {
   question?: Question
@@ -29,80 +24,51 @@ interface CreateOrEditQuizQuestionProps {
   onCancel: () => void
 }
 
-const CreateOrEditQuizQuestion: React.FC<CreateOrEditQuizQuestionProps> = ({
-  question,
-  setQuestions,
-  onCancel
-}) => {
-  const dispatch = useAppDispatch()
-  const [isNewQuestion, setIsNewQuestion] = useState<boolean>(!!question)
+const CreateOrEditQuizQuestion = forwardRef<
+  { openCreateModal: () => void },
+  CreateOrEditQuizQuestionProps
+>(({ question, setQuestions, onCancel }, reference) => {
+  const { handleErrorAlert, handleAlert } = useSnackbarAlert()
   const { openModal, closeModal } = useModalContext()
 
-  const createQuestionService = useCallback(
-    (data?: QuestionForm) => ResourceService.createQuestion(data),
-    []
-  )
-
-  const updateQuestionService = useCallback(
-    (params?: UpdateQuestionParams) => ResourceService.updateQuestion(params),
-    []
-  )
-
-  const onCreateResponse = (response: Question | null) => {
-    response && setQuestions((prev) => [...prev, response])
-    onResponse()
+  const handleCreateResponse = (createdQuestion: Question) => {
+    if (createdQuestion) {
+      setQuestions((prevQuestions) => [...prevQuestions, createdQuestion])
+    }
+    handleResponse()
   }
 
-  const onUpdateResponse = (response: Question | null) => {
-    response &&
-      setQuestions((prev) =>
-        prev.map((item) => (item._id === response._id ? response : item))
-      )
-    onResponse()
-  }
-
-  const onResponse = () => {
-    dispatch(
-      openAlert({
-        severity: snackbarVariants.success,
-        message: 'myResourcesPage.questions.successAddedQuestion'
+  const handleUpdateResponse = (updatedQuestion: Question) => {
+    if (updatedQuestion) {
+      setQuestions((prevQuestions) => {
+        return prevQuestions.map((question) =>
+          question._id === updatedQuestion._id ? updatedQuestion : question
+        )
       })
-    )
+    }
+    handleResponse()
+  }
+
+  const handleResponse = () => {
+    handleAlert({
+      severity: snackbarVariants.success,
+      message: 'myResourcesPage.questions.successAddedQuestion'
+    })
     onCancel()
   }
 
-  const onResponseError = (error?: ErrorResponse) => {
-    const errorKey = getErrorKey(error)
-
-    dispatch(
-      openAlert({
-        severity: snackbarVariants.error,
-        message: error
-          ? {
-              text: errorKey,
-              options: {
-                message: getErrorMessage(error.message)
-              }
-            }
-          : errorKey
-      })
-    )
-  }
-
-  const { loading: createLoading, fetchData: createQuestion } = useAxios({
-    service: createQuestionService,
-    defaultResponse: null,
-    fetchOnMount: false,
-    onResponse: onCreateResponse,
-    onResponseError
+  const { mutate: createQuestion, isPending: createPending } = useMutation({
+    queryKey: ['questions'],
+    mutationFn: ResourceService.createQuestion,
+    onSuccess: handleCreateResponse,
+    onError: handleErrorAlert
   })
 
-  const { loading: updateLoading, fetchData: updateQuestion } = useAxios({
-    service: updateQuestionService,
-    defaultResponse: null,
-    fetchOnMount: false,
-    onResponse: onUpdateResponse,
-    onResponseError
+  const { mutate: updateQuestion, isPending: updatePending } = useMutation({
+    queryKeys: [['questions'], ['question', question?._id]],
+    mutationFn: ResourceService.updateQuestion,
+    onSuccess: handleUpdateResponse,
+    onError: handleErrorAlert
   })
 
   const {
@@ -115,22 +81,21 @@ const CreateOrEditQuizQuestion: React.FC<CreateOrEditQuizQuestionProps> = ({
   } = useForm<QuestionForm>({
     initialValues: initialValues(question)
   })
-  const onCloseCreation = useCallback(() => {
+  const handleCloseCreation = useCallback(() => {
     closeModal()
     onCancel()
   }, [closeModal, onCancel])
 
-  const onOpenCreation = useCallback(
+  const handleOpenCreation = useCallback(
     ({ title, category }: QuestionModalForm) => {
       handleNonInputValueChange('title', title)
       handleNonInputValueChange('category', category)
-      setIsNewQuestion(true)
       closeModal()
     },
-    [closeModal, handleNonInputValueChange, setIsNewQuestion]
+    [closeModal, handleNonInputValueChange]
   )
 
-  const onCreateQuestion = async () => {
+  const handleCreateQuestion = () => {
     const updatedData = data.openAnswer
       ? {
           ...data,
@@ -142,31 +107,35 @@ const CreateOrEditQuizQuestion: React.FC<CreateOrEditQuizQuestionProps> = ({
         }
       : data
 
-    await createQuestion(updatedData)
+    createQuestion(updatedData)
   }
 
-  const onUpdateQuestion = async () => {
-    question && (await updateQuestion({ ...data, id: question._id }))
+  const handleUpdateQuestion = () => {
+    if (question) {
+      updateQuestion({ ...data, id: question._id })
+    }
   }
 
-  const onOpenCreateQuestionModal = useCallback(() => {
+  const handleOpenCreateQuestionModal = useCallback(() => {
     openModal({
       component: (
         <CreateOrEditQuestionModal
-          actions={{ onCancel: onCloseCreation, onSave: onOpenCreation }}
+          actions={{
+            onCancel: handleCloseCreation,
+            onSave: handleOpenCreation
+          }}
           initialData={data}
         />
       ),
       customCloseModal: onCancel
     })
-  }, [openModal, onCloseCreation, onOpenCreation, data, onCancel])
+  }, [openModal, handleCloseCreation, handleOpenCreation, data, onCancel])
 
-  useEffect(() => {
-    !question && onOpenCreateQuestionModal()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  useImperativeHandle(reference, () => ({
+    openCreateModal: handleOpenCreateQuestionModal
+  }))
 
-  return isNewQuestion ? (
+  return (
     <Box component={ComponentEnum.Form} onSubmit={handleSubmit}>
       <QuestionEditor
         data={data}
@@ -175,13 +144,15 @@ const CreateOrEditQuizQuestion: React.FC<CreateOrEditQuizQuestionProps> = ({
         handleInputChange={handleInputChange}
         handleNonInputValueChange={handleNonInputValueChange}
         isQuizQuestion
-        loading={createLoading || updateLoading}
+        loading={createPending || updatePending}
         onCancel={onCancel}
-        onEdit={onOpenCreateQuestionModal}
-        onSave={question ? onUpdateQuestion : onCreateQuestion}
+        onEdit={handleOpenCreateQuestionModal}
+        onSave={question ? handleUpdateQuestion : handleCreateQuestion}
       />
     </Box>
-  ) : null
-}
+  )
+})
+
+CreateOrEditQuizQuestion.displayName = 'CreateOrEditQuizQuestion'
 
 export default CreateOrEditQuizQuestion

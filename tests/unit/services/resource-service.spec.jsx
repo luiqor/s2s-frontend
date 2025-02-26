@@ -208,7 +208,7 @@ describe('resourseService tests', () => {
       .reply(200, mockResponse)
 
     const createdQuestion =
-      await ResourceService.createQuestionQuery(newQuestionData)
+      await ResourceService.createQuestion(newQuestionData)
 
     expect(mockAxiosClient.history.post[0].url).toBe(
       URLs.resources.questions.post
@@ -258,5 +258,78 @@ describe('resourseService tests', () => {
     const response = await ResourceService.createAttachment(attachment)
 
     expect(response).toEqual(mockAttachmentResponse)
+  })
+  
+  it('should update a question', async () => {
+    const questionId = '6255bc080a75adf9223df444'
+    const questionData = {
+      title: 'Updated Question Title',
+      text: 'What is the speed of light?',
+      answers: [
+        { text: '300,000 km/s', isCorrect: true },
+        { text: '150,000 km/s', isCorrect: false },
+        { text: '450,000 km/s', isCorrect: false }
+      ],
+      type: 'oneAnswer',
+      author: '12345',
+      resourceType: 'question'
+    }
+
+    const mockResponse = {
+      ...questionData,
+      _id: questionId,
+      updatedAt: '2025-02-08T14:30:31.101+00:00'
+    }
+
+    mockAxiosClient
+      .onPatch(
+        URLs.resources.questions.patch.replace(':id', questionId)
+      )
+      .reply(200, mockResponse)
+
+    const updatedQuestion = await ResourceService.updateQuestion({
+      id: questionId,
+      ...questionData
+    })
+
+    expect(mockAxiosClient.history.patch[0].url).toBe(
+      URLs.resources.questions.patch.replace(':id', questionId)
+    )
+
+    expect(mockAxiosClient.history.patch[0].data).toEqual(
+      JSON.stringify(questionData)
+    )
+
+    expect(updatedQuestion).toEqual(mockResponse)
+  })
+
+  it('should fetch a question by ID', async () => {
+    const questionId = '6641388f36ebdb0432a3a2e5'
+    const mockQuestionData = {
+      _id: questionId,
+      title: 'Sample Question',
+      text: 'What is 2 + 2?',
+      answers: [
+        { text: '3', isCorrect: false },
+        { text: '4', isCorrect: true },
+        { text: '5', isCorrect: false }
+      ],
+      type: 'oneAnswer',
+      author: '12345',
+      resourceType: 'question',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z'
+    }
+
+    mockAxiosClient
+      .onGet(URLs.resources.questions.getById.replace(':id', questionId))
+      .reply(200, mockQuestionData)
+
+    const result = await ResourceService.getQuestion(questionId)
+
+    expect(mockAxiosClient.history.get[0].url).toBe(
+      URLs.resources.questions.getById.replace(':id', questionId)
+    )
+    expect(result).toEqual(mockQuestionData)
   })
 })

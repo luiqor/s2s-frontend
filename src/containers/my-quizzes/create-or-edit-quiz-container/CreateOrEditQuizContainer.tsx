@@ -1,4 +1,11 @@
-import { ChangeEvent, useCallback, useEffect, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  type ComponentRef,
+  type ChangeEvent
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
@@ -22,6 +29,7 @@ import PageWrapper from '~/components/page-wrapper/PageWrapper'
 import Loader from '~/components/loader/Loader'
 
 import { snackbarVariants } from '~/constants'
+import { getFullUrl } from '~/utils/get-full-url'
 import { authRoutes } from '~/router/constants/authRoutes'
 import { QuizContentProps } from '~/pages/new-quiz/NewQuiz.constants'
 import {
@@ -39,7 +47,6 @@ import {
   ResourcesTypesEnum as ResourceType,
   PositionEnum
 } from '~/types'
-import { createUrlPath } from '~/utils/helper-functions'
 
 import { styles } from '~/containers/my-quizzes/create-or-edit-quiz-container/CreateOrEditQuizContainer.styles'
 
@@ -60,6 +67,9 @@ const CreateOrEditQuizContainer: React.FC<QuizContentProps> = ({
   const { id = '' } = useParams()
   const { handleErrorAlert, handleAlert } = useSnackbarAlert()
   const [isCreationOpen, setIsCreationOpen] = useState<boolean>(false)
+  const modalRef = useRef<ComponentRef<typeof CreateOrEditQuizQuestion> | null>(
+    null
+  )
 
   const onCategoryChange = (
     _: React.SyntheticEvent,
@@ -70,7 +80,10 @@ const CreateOrEditQuizContainer: React.FC<QuizContentProps> = ({
 
   const navigateToQuizzesTab = () => {
     navigate(
-      createUrlPath(authRoutes.myResources.root.path, '', { tab: 'quizzes' })
+      getFullUrl({
+        pathname: authRoutes.myResources.root.path,
+        searchParameters: { tab: 'quizzes' }
+      })
     )
   }
 
@@ -84,14 +97,14 @@ const CreateOrEditQuizContainer: React.FC<QuizContentProps> = ({
     navigateToQuizzesTab()
   }
 
-  const { mutate: createQuiz } = useMutation({
+  const { mutate: createQuiz, isPending: createQuizPending } = useMutation({
     queryKey: ['quizzes'],
     mutationFn: ResourceService.addQuiz,
     onSuccess: handleResponse,
     onError: handleErrorAlert
   })
 
-  const { mutate: editQuiz } = useMutation({
+  const { mutate: updateQuiz, isPending: updateQuizPending } = useMutation({
     queryKeys: [['quizzes'], ['quiz', id]],
     mutationFn: ResourceService.editQuiz,
     onSuccess: handleResponse,
@@ -145,7 +158,7 @@ const CreateOrEditQuizContainer: React.FC<QuizContentProps> = ({
           columns={columns}
           onAddResources={onAddQuestions}
           removeColumnRules={removeColumnRules}
-          requestService={ResourceService.getQuestionsQuery}
+          requestService={ResourceService.getQuestions}
           resourceTab={ResourcesTabsEnum.Questions}
           resources={questions}
         />
@@ -166,11 +179,18 @@ const CreateOrEditQuizContainer: React.FC<QuizContentProps> = ({
   }
 
   const onOpenCreateQuestion = () => setIsCreationOpen(true)
+
   const onCloseCreateQuestion = () => setIsCreationOpen(false)
+
+  useEffect(() => {
+    if (isCreationOpen) {
+      modalRef.current?.openCreateModal()
+    }
+  }, [isCreationOpen])
 
   const onSaveQuiz = () =>
     id
-      ? editQuiz({
+      ? updateQuiz({
           id,
           title,
           description,
@@ -245,6 +265,7 @@ const CreateOrEditQuizContainer: React.FC<QuizContentProps> = ({
         {isCreationOpen && (
           <CreateOrEditQuizQuestion
             onCancel={onCloseCreateQuestion}
+            ref={modalRef}
             setQuestions={setQuestions}
           />
         )}
@@ -263,7 +284,12 @@ const CreateOrEditQuizContainer: React.FC<QuizContentProps> = ({
           <Button onClick={navigateToQuizzesTab} size='lg' variant='tonal'>
             {t('common.cancel')}
           </Button>
-          <Button onClick={onSaveQuiz} size='lg' type={ButtonTypeEnum.Submit}>
+          <Button
+            loading={createQuizPending || updateQuizPending}
+            onClick={onSaveQuiz}
+            size='lg'
+            type={ButtonTypeEnum.Submit}
+          >
             {t('common.save')}
           </Button>
         </Box>

@@ -186,12 +186,8 @@ export const ResourceService = {
       data
     })
   },
-  getQuestions: (
-    params?: GetResourcesParams
-  ): Promise<AxiosResponse<ItemsWithCount<Question>>> => {
-    return axiosClient.get(URLs.resources.questions.get, { params })
-  },
-  getQuestionsQuery: (params?: GetResourcesParams) => {
+
+  getQuestions: (params?: GetResourcesParams) => {
     return baseService.request<ItemsWithCount<Question>>({
       method: 'GET',
       url: getFullUrl({
@@ -200,23 +196,38 @@ export const ResourceService = {
       })
     })
   },
-  getQuestion: async (id?: string): Promise<AxiosResponse<GetQuestion>> =>
-    await axiosClient.get(createUrlPath(URLs.resources.questions.get, id)),
-  createQuestionQuery: (data: CreateQuestionData) => {
+
+  getQuestion: (id: string) => {
+    return baseService.request<GetQuestion>({
+      method: 'GET',
+      url: getFullUrl({
+        pathname: URLs.resources.questions.getById,
+        parameters: { id }
+      })
+    })
+  },
+
+  createQuestion: (data: CreateQuestionData) => {
     return baseService.request<Question>({
       method: 'POST',
       url: URLs.resources.questions.post,
       data
     })
   },
-  createQuestion: async (data?: CreateQuestionData): Promise<AxiosResponse> => {
-    return await axiosClient.post(URLs.resources.questions.post, data)
+
+  updateQuestion: (data: UpdateQuestionParams) => {
+    const { id, ...questionData } = data
+
+    return baseService.request<Question>({
+      method: 'PATCH',
+      url: getFullUrl({
+        pathname: URLs.resources.questions.patch,
+        parameters: { id }
+      }),
+      data: questionData
+    })
   },
-  updateQuestion: async (params?: UpdateQuestionParams) =>
-    await axiosClient.patch(
-      createUrlPath(URLs.resources.questions.patch, params?.id),
-      params
-    ),
+
   deleteQuestion: async (id: string): Promise<AxiosResponse> =>
     await axiosClient.delete(
       createUrlPath(URLs.resources.questions.delete, id)
