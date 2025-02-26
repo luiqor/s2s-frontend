@@ -133,7 +133,8 @@ const CreateOrEditLesson: React.FC = () => {
   const { mutate: fetchAddLesson } = useMutation({
     mutationFn: addLesson,
     onSuccess: handleResponse,
-    onError: handleErrorAlert
+    onError: handleErrorAlert,
+    queryKey: ['lessons']
   })
 
   const getLesson = useCallback(() => {
