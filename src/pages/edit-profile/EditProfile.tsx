@@ -35,7 +35,8 @@ import { snackbarVariants } from '~/constants'
 import { authRoutes } from '~/router/constants/authRoutes'
 
 import { styles } from '~/pages/edit-profile/EditProfile.styles'
-import { hasPhotoChanges } from '~/utils/has-photo-changes'
+import { getChangedFields } from '~/utils/get-changed-fields'
+import { replaceEmptyStringsWithNull } from '~/utils/replace-empty-strings-with-null'
 
 const EditProfile = () => {
   const [initialEditProfileState, setInitialEditProfileState] = useState<
@@ -72,13 +73,6 @@ const EditProfile = () => {
   const isPasswordSecurityTab =
     activeTab === UserProfileTabsEnum.PasswordAndSecurity
 
-  const hasChanges = (
-    initialData: Partial<EditProfileState> | DataByRole<string>,
-    currentData: Partial<EditProfileState> | DataByRole<string>
-  ): boolean => {
-    return JSON.stringify(initialData) !== JSON.stringify(currentData)
-  }
-
   useEffect(() => {
     const fetchData = async () => {
       await dispatch(
@@ -102,36 +96,12 @@ const EditProfile = () => {
   }, [loading, profileState, initialEditProfileState])
 
   const changedFields = useMemo<Partial<EditProfileState>>(() => {
-    if (!initialEditProfileState || !profileState) return {}
-    const { videoLink: initialVideoLink } = initialEditProfileState
-    const { videoLink: currentVideoLink } = profileState
-
-    const { photo: initialPhoto, ...initialData } = initialEditProfileState
-    const { photo: currentPhoto, ...currentData } = profileState
-
-    const hasPhotoChanged = hasPhotoChanges(initialPhoto, currentPhoto)
-
-    const hasChanged = hasChanges(initialData, currentData) || hasPhotoChanged
-
-    if (hasChanged) {
-      const changes: Partial<EditProfileState> = {
-        ...currentData
-      }
-
-      if (!hasChanges(initialVideoLink, currentVideoLink)) {
-        delete changes.videoLink
-      }
-
-      if (hasPhotoChanged) {
-        changes.photo = currentPhoto
-      }
-
-      return changes
-    } else {
+    if (!profileState || !initialEditProfileState) {
       return {}
     }
-  }, [profileState, initialEditProfileState])
 
+    return getChangedFields(initialEditProfileState, profileState)
+  }, [profileState, initialEditProfileState])
   const isChanged = useMemo<boolean>(
     () => Object.keys(changedFields).length > 0,
     [changedFields]
@@ -194,12 +164,15 @@ const EditProfile = () => {
       dataToUpdate.photo = photo
     }
 
+    const dataWithoutEmptyStrings = replaceEmptyStringsWithNull(dataToUpdate)
+
     await dispatch(
       updateUser({
         userId,
-        params: dataToUpdate
+        params: dataWithoutEmptyStrings
       })
     )
+
     dispatch(
       openAlert({
         severity: snackbarVariants.success,
