@@ -1,16 +1,14 @@
-import { FC, useEffect, useMemo } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import useForm from '~/hooks/use-form'
-import useAxios from '~/hooks/use-axios'
+import useMutation from '~/hooks/use-mutation'
 import useInputVisibility from '~/hooks/use-input-visibility'
 
 import { AuthService } from '~/services/auth-service'
-import { useAppDispatch } from '~/hooks/use-redux'
 
 import Box from '@mui/material/Box'
 
-import Loader from '~/components/loader/Loader'
 import Button from '~scss-components/button/Button'
 import AppTextField from '~/components/app-text-field/AppTextField'
 import ImgTitleDescription from '~/components/img-title-description/ImgTitleDescription'
@@ -19,74 +17,68 @@ import TitleWithDescription from '~/components/title-with-description/TitleWithD
 import LoginDialog from '~/containers/guest-home-page/login-dialog/LoginDialog'
 import { styles } from '~/containers/guest-home-page/reset-password/ResetPassword.styles'
 
-import { ButtonTypeEnum, NewPassword } from '~/types'
+import { ButtonTypeEnum, type NewPassword } from '~/types'
 import { confirmPassword, password } from '~/utils/validations/login'
-import { snackbarVariants } from '~/constants'
 import imgSuccess from '~/assets/img/email-confirmation-modals/success-icon.svg'
-import { openAlert } from '~/redux/features/snackbarSlice'
-import { getErrorKey } from '~/utils/get-error-key'
-import { Component } from '~/context/modal-context'
+import { type Component } from '~/context/modal-context'
+import useSnackbarAlert from '~/hooks/use-snackbar-alert'
 
 interface ResetPasswordProps {
   resetToken: string
-  openModal: (component: Component, delayToClose?: number) => void
+  openModal: (component: Component) => void
 }
 
-const ResetPassword: FC<ResetPasswordProps> = ({ resetToken, openModal }) => {
+const ResetPassword: React.FC<ResetPasswordProps> = ({
+  resetToken,
+  openModal
+}) => {
   const { t } = useTranslation()
-  const dispatch = useAppDispatch()
+  const { handleErrorAlert } = useSnackbarAlert()
 
-  const successNotification = useMemo(
-    () => (
-      <Box sx={styles.box}>
-        <ImgTitleDescription
-          img={imgSuccess}
-          style={styles}
-          title={t('login.successReset')}
-        />
-        <Button
-          onClick={() => openModal({ component: <LoginDialog /> })}
-          size='lg'
-          sx={styles.button}
-        >
-          {t('button.goToLogin')}
-        </Button>
-      </Box>
-    ),
-    [openModal, t]
+  const handleResetPassword = useCallback(
+    (password: string) => {
+      return AuthService.resetPassword(resetToken, password)
+    },
+    [resetToken]
   )
 
-  const {
-    response,
-    error,
-    loading,
-    fetchData: sendResetPassword
-  } = useAxios({
-    service: (newPassword: NewPassword) =>
-      AuthService.resetPassword(resetToken, newPassword),
-    fetchOnMount: false,
-    defaultResponse: null
-  })
-
-  useEffect(() => {
-    if (error) {
-      dispatch(
-        openAlert({
-          severity: snackbarVariants.error,
-          message: getErrorKey(error)
-        })
+  const handleSuccess = useCallback(() => {
+    openModal({
+      component: (
+        <Box sx={styles.box}>
+          <ImgTitleDescription
+            img={imgSuccess}
+            style={styles}
+            title={t('login.successReset')}
+          />
+          <Button
+            onClick={() => openModal({ component: <LoginDialog /> })}
+            size='lg'
+            sx={styles.button}
+          >
+            {t('button.goToLogin')}
+          </Button>
+        </Box>
       )
-    } else if (response !== null) {
-      openModal({ component: successNotification }, 5000)
-    }
-  }, [error, openModal, response, dispatch, successNotification])
+    })
+  }, [openModal, t])
+
+  const { isPending, mutate: resetPassword } = useMutation({
+    mutationFn: handleResetPassword,
+    onSuccess: handleSuccess,
+    onError: handleErrorAlert
+  })
 
   const { handleSubmit, handleInputChange, handleBlur, errors, data } =
     useForm<NewPassword>({
-      onSubmit: async (): Promise<void> =>
-        sendResetPassword({ password: data.password }),
+      onSubmit: (data) => {
+        if (data) {
+          resetPassword(data.password)
+        }
+      },
       initialValues: { password: '', confirmPassword: '' },
-      validations: { password, confirmPassword }
+      validations: { password, confirmPassword },
+      submitWithData: true
     })
 
   const { inputVisibility: passwordVisibility, showInputText: showPassword } =
@@ -124,16 +116,17 @@ const ResetPassword: FC<ResetPasswordProps> = ({ resetToken, openModal }) => {
           onBlur={handleBlur('confirmPassword')}
           onChange={handleInputChange('confirmPassword')}
           required
+          sx={{ mb: '5px' }}
           type={showConfirmPassword ? 'text' : 'password'}
           value={data.confirmPassword}
         />
         <Button
-          disabled={loading}
           fullWidth
+          loading={isPending}
           size='lg'
           type={ButtonTypeEnum.Submit}
         >
-          {loading ? <Loader size={20} /> : t('login.savePassword')}
+          {t('login.savePassword')}
         </Button>
       </Box>
     </Box>

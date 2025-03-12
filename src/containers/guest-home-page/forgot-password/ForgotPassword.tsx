@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 
-import { useAppDispatch } from '~/hooks/use-redux'
 import useForm from '~/hooks/use-form'
 import { useModalContext } from '~/context/modal-context'
 
@@ -18,69 +17,60 @@ import { styles } from '~/containers/guest-home-page/forgot-password/ForgotPassw
 
 import info from '~/assets/img/guest-home-page/info.svg'
 import { AuthService } from '~/services/auth-service'
-import { snackbarVariants } from '~/constants'
 import { email } from '~/utils/validations/login'
-import { openAlert } from '~/redux/features/snackbarSlice'
-import { getErrorKey } from '~/utils/get-error-key'
-import { ButtonTypeEnum } from '~/types'
+import { ButtonTypeEnum, type ForgotPasswordParams } from '~/types'
+import useMutation from '~/hooks/use-mutation'
 
-const ForgotPassword = () => {
+import useSnackbarAlert from '~/hooks/use-snackbar-alert'
+
+const ForgotPassword: React.FC = () => {
   const { t } = useTranslation()
   const { openModal, closeModal } = useModalContext()
-  const [loading, setLoading] = useState(false)
-  const dispatch = useAppDispatch()
+  const { handleErrorAlert } = useSnackbarAlert()
 
-  const backToLogin = () => {
+  const handleBackToLogin = useCallback(() => {
     openModal({ component: <LoginDialog /> })
-  }
+  }, [openModal])
 
-  const sendEmail = async (data) => {
-    try {
-      setLoading(true)
-      await AuthService.forgotPassword(data)
-      openModal(
-        {
-          component: (
-            <NotificationModal
-              buttonTitle={t('common.confirmButton')}
-              description={description}
-              img={info}
-              onClose={closeModal}
-              title={t('login.passwordReset')}
-            />
-          )
-        },
-        5000
-      )
-    } catch (e) {
-      dispatch(
-        openAlert({
-          severity: snackbarVariants.error,
-          message: getErrorKey(e.response.data)
-        })
-      )
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const { handleSubmit, handleInputChange, handleBlur, errors, data } = useForm(
-    {
-      onSubmit: async () => sendEmail(data),
+  const { handleSubmit, handleInputChange, handleBlur, errors, data } =
+    useForm<ForgotPasswordParams>({
+      onSubmit: (data) => {
+        if (data) {
+          sendEmail(data)
+        }
+      },
       initialValues: { email: '' },
-      validations: { email }
-    }
-  )
+      validations: { email },
+      submitWithData: true
+    })
 
-  const description = (
-    <Typography component='span'>
-      {t('login.weSentEmail')}
-      <Typography component='span' variant='subtitle2'>
-        {data.email}
-      </Typography>
-      {t('login.emailArrive')}
-    </Typography>
-  )
+  const handleSuccessSending = useCallback(() => {
+    openModal({
+      component: (
+        <NotificationModal
+          buttonTitle={t('common.confirmButton')}
+          description={
+            <Typography component='span'>
+              {t('login.weSentEmail')}
+              <Typography component='span' variant='subtitle2'>
+                {data.email}
+              </Typography>
+              {t('login.emailArrive')}
+            </Typography>
+          }
+          img={info}
+          onClose={closeModal}
+          title={t('login.passwordReset')}
+        />
+      )
+    })
+  }, [closeModal, data, openModal, t])
+
+  const { isPending, mutate: sendEmail } = useMutation({
+    mutationFn: AuthService.forgotPassword,
+    onSuccess: handleSuccessSending,
+    onError: handleErrorAlert
+  })
 
   return (
     <Box sx={styles.root}>
@@ -89,7 +79,6 @@ const ForgotPassword = () => {
         style={styles.titleWithDescription}
         title={t('login.forgotPassword')}
       />
-
       <Box component='form' onSubmit={handleSubmit}>
         <AppTextField
           autoFocus
@@ -99,18 +88,20 @@ const ForgotPassword = () => {
           onBlur={handleBlur('email')}
           onChange={handleInputChange('email')}
           required
-          size='large'
           sx={{ mb: '16px', mt: '32px' }}
           type='email'
           value={data.email}
         />
-        <Button loading={loading} sx={styles.sentPassword} type={ButtonTypeEnum.Submit}>
+        <Button
+          loading={isPending}
+          sx={styles.sentPassword}
+          type={ButtonTypeEnum.Submit}
+        >
           {t('login.sendPassword')}
         </Button>
       </Box>
-
       <Button
-        onClick={backToLogin}
+        onClick={handleBackToLogin}
         size='md'
         sx={styles.backButton}
         variant='text-secondary'

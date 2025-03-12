@@ -8,12 +8,15 @@ import { createUrlPath } from '~/utils/helper-functions'
 import { URLs } from '~/constants/request'
 import {
   ApiMethodEnum,
+  ForgotPasswordParams,
   GoogleAuthParams,
   LoginParams,
   LoginResponse,
   SignupParams,
   SignupResponse
 } from '~/types'
+import { getFullUrl } from '~/utils/get-full-url'
+import { baseService } from './base-service'
 
 const { POST } = ApiMethodEnum
 
@@ -21,19 +24,33 @@ export const AuthService = {
   refresh: (): Promise<AxiosResponse<LoginResponse>> => {
     return axiosClient.get(URLs.auth.refresh)
   },
-  confirmEmail: (confirmToken: string): Promise<AxiosResponse> => {
-    const confirmUrl = createUrlPath(URLs.auth.confirm, confirmToken)
-    return axiosClient.get(confirmUrl)
+  confirmEmail: (token: string) => {
+    return baseService.request<void>({
+      method: 'GET',
+      url: getFullUrl({
+        pathname: URLs.auth.confirm,
+        parameters: { token }
+      })
+    })
   },
-  forgotPassword: (userEmail: string): Promise<AxiosResponse> => {
-    return axiosClient.post(URLs.auth.forgotPassword, userEmail)
+  forgotPassword: (data: ForgotPasswordParams) => {
+    return baseService.request<void>({
+      method: 'POST',
+      url: getFullUrl({
+        pathname: URLs.auth.forgotPassword
+      }),
+      data
+    })
   },
-  resetPassword: (
-    resetToken: string,
-    newPassword: { password: string }
-  ): Promise<AxiosResponse> => {
-    const confirmUrl = createUrlPath(URLs.auth.resetPassword, resetToken)
-    return axiosClient.patch(confirmUrl, newPassword)
+  resetPassword: (token: string, password: string) => {
+    return baseService.request({
+      method: 'PATCH',
+      url: getFullUrl({
+        pathname: URLs.auth.resetPassword,
+        parameters: { token }
+      }),
+      data: { password }
+    })
   },
   changePassword: (
     userId: string,
