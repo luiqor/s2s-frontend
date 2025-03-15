@@ -1,22 +1,19 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AxiosResponse } from 'axios'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import CheckBox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import LockIcon from '@mui/icons-material/Lock'
-
+import useQuery from '~/hooks/use-query'
 import { useAppSelector } from '~/hooks/use-redux'
 import useForm from '~/hooks/use-form'
-import useAxios from '~/hooks/use-axios'
 import { userService } from '~/services/user-service'
 import Button from '~scss-components/button/Button'
 import AppTextField from '~/components/app-text-field/AppTextField'
 import Loader from '~/components/loader/Loader'
 import AvatarIcon from '~/components/avatar-icon/AvatarIcon'
 
-import { defaultResponses } from '~/constants'
 import { styles } from '~/containers/my-cooperations/cooperation-notes/create-or-edit-note/CreateOrEditNote.styles'
 import {
   TextFieldVariantEnum,
@@ -26,7 +23,6 @@ import {
   NoteResponse,
   ComponentEnum,
   ButtonTypeEnum,
-  UserResponse,
   UserRole
 } from '~/types'
 
@@ -47,20 +43,17 @@ const CreateOrEditNote = ({
 
   const { userId, userRole } = useAppSelector((state) => state.appMain)
 
-  const getUserData: () => Promise<AxiosResponse<UserResponse>> = useCallback(
-    () => userService.getUserById(userId, userRole as UserRole),
-    [userId, userRole]
-  )
+  const getUserData = useCallback(() => {
+    return userService.getUserByIdWithBaseService(userId, userRole as UserRole)
+  }, [userId, userRole])
 
-  const {
-    loading,
-    response: { photo, firstName, lastName }
-  } = useAxios<UserResponse>({
-    service: getUserData,
-    fetchOnMount: true,
-    defaultResponse: defaultResponses.object as UserResponse
+  const { isLoading: userIsLoading, data: userResponse } = useQuery({
+    queryFn: getUserData,
+    queryKey: ['user', userId],
+    options: {
+      staleTime: Infinity
+    }
   })
-
   const {
     data,
     isDirty,
@@ -77,19 +70,25 @@ const CreateOrEditNote = ({
     }
   })
 
-  const userPhoto = photo
-    ? new URL(photo, import.meta.env.VITE_APP_IMG_USER_URL).href
-    : undefined
-  const isNameValid = Boolean(firstName && lastName)
-  const userName = isNameValid && `${firstName} ${lastName}`
+  if (userIsLoading || !userResponse) {
+    return (
+      <Box sx={styles.container}>
+        <Box sx={styles.header}>
+          <Loader size={20} />
+        </Box>
+      </Box>
+    )
+  }
 
-  const userInfo = loading ? (
-    <Loader size={20} />
-  ) : (
+  const userPhoto = userResponse.photo
+    ? new URL(userResponse.photo, import.meta.env.VITE_APP_IMG_USER_URL).href
+    : undefined
+  const userName = `${userResponse.firstName} ${userResponse.lastName}`
+  const userInfo = (
     <>
       <AvatarIcon
-        firstName={firstName}
-        lastName={lastName}
+        firstName={userResponse.firstName}
+        lastName={userResponse.lastName}
         photo={userPhoto}
         sx={styles.accountIcon}
       />

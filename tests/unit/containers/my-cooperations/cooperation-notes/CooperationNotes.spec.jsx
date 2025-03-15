@@ -1,8 +1,14 @@
-import { screen, fireEvent } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import CooperationNotes from '~/containers/my-cooperations/cooperation-notes/CooperationNotes'
-import { renderWithProviders, TestSnackbar } from '~tests/test-utils'
-import { ConfirmationDialogProvider } from '~/context/confirm-context'
+import {
+  renderWithProviders,
+  mockAxiosClient,
+  TestSnackbar
+} from '~tests/test-utils'
 import { vi } from 'vitest'
+import { ConfirmationDialogProvider } from '~/context/confirm-context'
+import { URLs } from '~/constants/request'
+import { getFullUrl } from '~/utils/get-full-url'
 
 const mockNotesData = [
   {
@@ -11,7 +17,8 @@ const mockNotesData = [
     author: {
       _id: '6565fd508a848ff2202df79c',
       firstName: 'User',
-      lastName: 'Test'
+      lastName: 'Test',
+      role: 'tutor'
     },
     isPrivate: false,
     cooperation: '65afbd053d67b51996a67c4c',
@@ -24,7 +31,8 @@ const mockNotesData = [
     author: {
       _id: '6565fd508a848ff2202df79c',
       firstName: 'User',
-      lastName: 'Test'
+      lastName: 'Test',
+      role: 'tutor'
     },
     isPrivate: false,
     cooperation: '65afbd053d67b51996a67c4c',
@@ -35,6 +43,13 @@ const mockNotesData = [
 
 const mockResponseData = {
   data: ''
+}
+const userMock = {
+  _id: '648850c4fdc2d1a130c24aea',
+  role: 'tutor',
+  firstName: 'Test',
+  lastName: 'User',
+  photo: 'https://www.google.com'
 }
 
 const mockGetNote = vi.fn()
@@ -55,23 +70,29 @@ vi.mock('~/services/cooperation-service', async () => {
   }
 })
 
-const userState = {
+const appMain = {
   appMain: { userRole: 'tutor', userId: mockNotesData[0].author._id }
 }
 
 describe('CooperationNotes', () => {
   beforeEach(() => {
+    const url = getFullUrl({
+      parameters: { id: mockNotesData[0].author._id },
+      pathname: URLs.users.getUserById,
+      searchParameters: { userRole: mockNotesData[0].author.role }
+    })
+    mockAxiosClient.onGet(url).reply(200, userMock)
+
     mockGetNote.mockReturnValue({
       data: mockNotesData
     })
-
     renderWithProviders(
       <ConfirmationDialogProvider>
         <TestSnackbar>
           <CooperationNotes />
         </TestSnackbar>
       </ConfirmationDialogProvider>,
-      { preloadedState: userState }
+      { preloadedState: appMain }
     )
   })
 
@@ -85,29 +106,31 @@ describe('CooperationNotes', () => {
     expect(notes).toBeInTheDocument()
   })
 
-  it('should open create note form and save the note', () => {
+  it('should open create note form and save the note', async () => {
     const newNoteText = 'Newly created note'
     const addNoteBtn = screen.getByTestId('AddIcon')
     fireEvent.click(addNoteBtn)
-
-    const noteFormSettings = screen.getByText(
-      'cooperationsPage.notes.privateSetting'
-    )
-
-    expect(noteFormSettings).toBeInTheDocument()
-
+    await waitFor(() => {
+      const noteFormSettings = screen.getByText(
+        'cooperationsPage.notes.privateSetting'
+      )
+      expect(noteFormSettings).toBeInTheDocument()
+    })
     const noteTextInput = screen.getByLabelText(
       'cooperationsPage.notes.noteText'
     )
-    const saveButton = screen.getByRole('button', { name: 'common.save' })
+    const saveButton = screen.getByRole('button', {
+      name: 'common.save'
+    })
 
     fireEvent.change(noteTextInput, {
       target: { value: newNoteText }
     })
     fireEvent.click(saveButton)
-
-    const newNote = screen.getByText(newNoteText)
-    expect(newNote).toBeInTheDocument()
+    await waitFor(() => {
+      const newNote = screen.getByText(newNoteText)
+      expect(newNote).toBeInTheDocument()
+    })
   })
 
   it('should close create note form', () => {
@@ -124,7 +147,7 @@ describe('CooperationNotes', () => {
     expect(noteFormSettings).toBeNull()
   })
 
-  it('should enable the edit mode and handle updates', () => {
+  it('should enable the edit mode and handle updates', async () => {
     const newNoteText = 'New note text'
     const [menuButton] = screen.getAllByTestId('MoreVertIcon')
     fireEvent.click(menuButton)
@@ -140,21 +163,25 @@ describe('CooperationNotes', () => {
 
     const newNote = screen.getByText(newNoteText)
 
-    expect(mockUpdateNote).toHaveBeenCalled()
-    expect(newNote).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockUpdateNote).toHaveBeenCalled()
+      expect(newNote).toBeInTheDocument()
+    })
   })
 
-  it('should handle duplicate notes', () => {
+  it('should handle duplicate notes', async () => {
     const [menuButton] = screen.getAllByTestId('MoreVertIcon')
     fireEvent.click(menuButton)
 
     const duplicateButton = screen.getByTestId('ContentCopyIcon')
     fireEvent.click(duplicateButton)
 
-    expect(mockCreateNote).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockCreateNote).toHaveBeenCalled()
+    })
   })
 
-  it('should handle delete notes', () => {
+  it('should handle delete notes', async () => {
     const [menuButton] = screen.getAllByTestId('MoreVertIcon')
     fireEvent.click(menuButton)
 
@@ -164,7 +191,9 @@ describe('CooperationNotes', () => {
     const confirmButton = screen.getByRole('button', { name: 'common.yes' })
     fireEvent.click(confirmButton)
 
-    expect(mockDeleteNote).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockDeleteNote).toHaveBeenCalled()
+    })
   })
 })
 
@@ -177,17 +206,16 @@ describe('CooperationNotes with error', () => {
     mockGetNote.mockRejectedValue({
       response: { data: fakeError }
     })
-
     renderWithProviders(
       <TestSnackbar>
         <CooperationNotes />
       </TestSnackbar>,
-      { preloadedState: userState }
+      { preloadedState: appMain }
     )
   })
 
-  it('should show the error message', () => {
-    const errorAlert = screen.getByText(`errors.${fakeError.message}`)
+  it('should show the error message', async () => {
+    const errorAlert = await screen.findByText(`errors.${fakeError.message}`)
 
     expect(errorAlert).toBeInTheDocument()
   })
