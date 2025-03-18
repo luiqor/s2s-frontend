@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Link,
+  useBlocker,
   useLocation,
   useNavigate,
   useSearchParams
@@ -42,6 +43,8 @@ const EditProfile = () => {
   const [initialEditProfileState, setInitialEditProfileState] = useState<
     typeof profileState | null
   >(null)
+
+  const [isModalConfirmed, setIsModalConfirmed] = useState(false)
 
   const [searchParams, setSearchParams] = useSearchParams({
     tab: UserProfileTabsEnum.Profile
@@ -102,10 +105,46 @@ const EditProfile = () => {
 
     return getChangedFields(initialEditProfileState, profileState)
   }, [profileState, initialEditProfileState])
+
   const isChanged = useMemo<boolean>(
     () => Object.keys(changedFields).length > 0,
     [changedFields]
   )
+
+  const getProfileTabChangedFields = useMemo<boolean>(() => {
+    if (!initialEditProfileState || !profileState) {
+      return false
+    }
+
+    const initialProfileTab = {
+      firstName: initialEditProfileState.firstName,
+      lastName: initialEditProfileState.lastName,
+      photo: initialEditProfileState.photo,
+      city: initialEditProfileState.city,
+      country: initialEditProfileState.country,
+      nativeLanguage: initialEditProfileState.nativeLanguage,
+      professionalSummary: initialEditProfileState.professionalSummary,
+      videoLink: initialEditProfileState.videoLink
+    }
+
+    const changedProfileTab = {
+      firstName: profileState.firstName,
+      lastName: profileState.lastName,
+      photo: profileState.photo,
+      city: profileState.city,
+      country: profileState.country,
+      nativeLanguage: profileState.nativeLanguage,
+      professionalSummary: profileState.professionalSummary,
+      videoLink: profileState.videoLink
+    }
+
+    const hasFieldsChanged = getChangedFields(
+      initialProfileTab,
+      changedProfileTab
+    )
+
+    return Object.keys(hasFieldsChanged).length > 0
+  }, [initialEditProfileState, profileState])
 
   const handleClick = async (tab: UserProfileTabsEnum) => {
     if (activeTab === tab) return
@@ -121,10 +160,10 @@ const EditProfile = () => {
     }
   }
 
-  const { hash } = useLocation()
+  const { hash, search, pathname } = useLocation()
   const navigate = useNavigate()
 
-  const handleUpdateUser = async (): Promise<void> => {
+  const handleUpdateUser = useCallback(async (): Promise<void> => {
     const { country, city } = profileState
     const {
       videoLink,
@@ -184,7 +223,62 @@ const EditProfile = () => {
     if (hash) {
       navigate(`${authRoutes.myProfile.path}#complete`)
     }
-  }
+  }, [profileState, changedFields, dispatch, userId, hash, userRole, navigate])
+
+  const blocker = useBlocker(getProfileTabChangedFields)
+  const { openDialog } = useConfirm()
+
+  const openAffirmativeModal = useCallback(
+    (hasPathnameChanged: boolean) => {
+      if (hasPathnameChanged) {
+        openDialog({
+          title: t(
+            'editProfilePage.profile.profileTab.saveUnsavedChangesModal.title'
+          ),
+          message: t(
+            'editProfilePage.profile.profileTab.saveUnsavedChangesModal.description'
+          ),
+          cancelButton: t(
+            'editProfilePage.profile.profileTab.saveUnsavedChangesModal.cancelBtn'
+          ),
+          confirmButton: t(
+            'editProfilePage.profile.profileTab.saveUnsavedChangesModal.submitBtn'
+          ),
+          sendConfirm: (isConfirmed) => {
+            if (isConfirmed) {
+              setIsModalConfirmed(true)
+              void handleUpdateUser()
+            } else {
+              blocker.proceed?.()
+            }
+          }
+        })
+      }
+    },
+    [blocker, handleUpdateUser, openDialog, t]
+  )
+
+  useEffect(() => {
+    if (blocker && blocker.location && !isModalConfirmed) {
+      const hasPathnameChanged = pathname !== blocker.location.pathname
+      const hasSearchChanged = search !== blocker.location.search
+
+      if (hasSearchChanged && !hasPathnameChanged) {
+        blocker.proceed?.()
+      }
+
+      openAffirmativeModal(hasPathnameChanged)
+    }
+  }, [
+    blocker,
+    pathname,
+    openDialog,
+    search,
+    t,
+    handleUpdateUser,
+    openAffirmativeModal,
+    isModalConfirmed
+  ])
 
   const cooperationContent = activeTab && tabsData[activeTab]?.content
 
