@@ -7,8 +7,10 @@ const mockOpenMenu = vi.fn()
 
 vi.mock('~/services/user-service', () => ({
   userService: {
-    getUserById: () => ({
-      data: { firstName: 'John', lastName: 'Doe', photo: 'path-to-photo' }
+    getUserByIdWithBaseService: () => ({
+      firstName: 'John',
+      lastName: 'Doe',
+      photo: 'path-to-photo'
     })
   }
 }))
