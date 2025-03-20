@@ -123,6 +123,7 @@ const SubjectsStep = ({ btnsBox }: SubjectsStepProps) => {
             fetchOnFocus
             labelField='name'
             onChange={onChangeCategory}
+            queryOptions={{ type: 'categories' }}
             service={categoryService.getCategoriesNames}
             sx={{ mb: '20px' }}
             textFieldProps={{
@@ -132,12 +133,16 @@ const SubjectsStep = ({ btnsBox }: SubjectsStepProps) => {
             valueField='_id'
           />
           <AsyncAutocomplete
-            axiosProps={{ onResponse: fetchSubjectHandler }}
             disabled={!subjects.category}
             fetchCondition={!subjectIsFetched}
             fetchOnFocus
             labelField='name'
             onChange={onChangeSubject}
+            onResponse={fetchSubjectHandler}
+            queryOptions={{
+              type: 'subjects',
+              categoryId: subjects.category?._id
+            }}
             service={getSubjectsNames}
             sx={{ mb: '20px' }}
             textFieldProps={{

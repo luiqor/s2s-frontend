@@ -1,26 +1,25 @@
+import { QueryObserverResult } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { defaultResponses } from '~/constants'
+import { ResponseError } from '~/exceptions'
 
-import useAxios from '~/hooks/use-axios'
+import useQuery from '~/hooks/use-query'
 import { subjectService } from '~/services/subject-service'
-import { ErrorResponse, SubjectNameInterface } from '~/types'
+import { type SubjectNameInterface } from '~/types'
 
 interface UseSubjectsNamesProps<T> {
   category: string | null
-  fetchOnMount?: boolean
   transform?: (data: SubjectNameInterface[]) => T[]
 }
 
 interface UseSubjectsNamesResult<T> {
   loading: boolean
   response: T[]
-  fetchData: () => Promise<void>
-  error: ErrorResponse | null
+  fetchData: () => Promise<QueryObserverResult<T[]>>
+  error: ResponseError | null
 }
 
 const useSubjectsNames = <T = SubjectNameInterface,>({
   category,
-  fetchOnMount = true,
   transform
 }: UseSubjectsNamesProps<T>): UseSubjectsNamesResult<T> => {
   const getSubjectsNames = useCallback(
@@ -28,18 +27,26 @@ const useSubjectsNames = <T = SubjectNameInterface,>({
     [category]
   )
 
-  const { loading, response, fetchData, error } = useAxios<
-    SubjectNameInterface[],
-    undefined,
-    T[]
-  >({
-    service: getSubjectsNames,
-    fetchOnMount,
-    defaultResponse: defaultResponses.array,
-    transform
+  const {
+    isLoading: loading,
+    data: response = [],
+    refetch: fetchData,
+    error
+  } = useQuery({
+    queryKey: ['subjects-names', category],
+    queryFn: getSubjectsNames,
+    options: {
+      staleTime: Infinity,
+      select: transform
+    }
   })
 
-  return { loading, response, fetchData, error }
+  return {
+    loading,
+    response,
+    fetchData,
+    error
+  }
 }
 
 export default useSubjectsNames

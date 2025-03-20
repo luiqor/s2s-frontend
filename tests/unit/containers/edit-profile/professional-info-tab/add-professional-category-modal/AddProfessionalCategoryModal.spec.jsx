@@ -51,15 +51,17 @@ describe('AddProfessionalCategoryModal without initial value', () => {
     mockAxiosClient
       .onGet(URLs.categories.getNames)
       .reply(200, [initialValues.category, ...mockedBlockedCategory])
+
     mockAxiosClient
       .onGet(
-        `${URLs.categories.get}/${initialValues.category._id}${URLs.subjects.getNames}`
+        URLs.subjects.getNamesByCategoryId.replace(
+          ':id',
+          initialValues.category._id
+        )
       )
       .reply(200, initialValues.subjects)
 
-    mockAxiosClient
-      .onGet(`${URLs.categories.get}${URLs.subjects.getNames}`)
-      .reply(200, [])
+    mockAxiosClient.onGet(URLs.subjects.getNames).reply(200, [])
 
     renderWithProviders(
       <AddProfessionalCategoryModal
@@ -79,7 +81,8 @@ describe('AddProfessionalCategoryModal without initial value', () => {
 
     await selectOption(
       categoryAutocomplete,
-      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' })
+      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' }),
+      'findByText'
     )
 
     await act(() =>
@@ -267,8 +270,10 @@ describe('AddProfessionalCategoryModal Subject Updates', () => {
 
     await selectOption(
       categoryAutocomplete,
-      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' })
+      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' }),
+      'findByDisplayValue'
     )
+
     await act(() =>
       fireEvent.change(professionalSubjects[0], {
         target: { value: 'Gastronomy' }
@@ -350,7 +355,8 @@ describe('AddProfessionalCategoryModal when clearing categories and subjects', (
   it('should reset category and related subjects when category is cleared', async () => {
     await selectOption(
       categoryAutocomplete,
-      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' })
+      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' }),
+      'findByDisplayValue'
     )
 
     expect(professionalSubjects[0]).toHaveValue('Gastronomy')
@@ -372,7 +378,8 @@ describe('AddProfessionalCategoryModal when clearing categories and subjects', (
   it('should disable "Save changes" button when category is cleared', async () => {
     await selectOption(
       categoryAutocomplete,
-      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' })
+      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' }),
+      'findByDisplayValue'
     )
     expect(submitButton).not.toBeDisabled()
 
@@ -385,7 +392,8 @@ describe('AddProfessionalCategoryModal when clearing categories and subjects', (
   it('should allow clearing the main study category field', async () => {
     await selectOption(
       categoryAutocomplete,
-      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' })
+      t(`categories.${titleToCamel('Cooking')}`, { defaultValue: 'Cooking' }),
+      'findByDisplayValue'
     )
     expect(categoryAutocomplete.value).toBe('Cooking')
 

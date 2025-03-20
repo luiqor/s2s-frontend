@@ -3,35 +3,33 @@ import { AutocompleteProps } from '@mui/material/Autocomplete'
 import { TextFieldProps } from '@mui/material/TextField'
 
 import AppAutoComplete from '~/components/app-auto-complete/AppAutoComplete'
-import useAxios, { UseAxiosProps } from '~/hooks/use-axios'
-import { defaultResponses } from '~/constants'
-import { ServiceFunction, Category } from '~/types'
+import useQuery from '~/hooks/use-query'
+import { Category, ServiceFunctionNew } from '~/types'
+import { ResponseError } from '~/exceptions'
 
 export interface AsyncAutocompleteProps<
   Response,
-  Params,
   TransformedResponse,
   F extends boolean | undefined
 > extends Omit<
     AutocompleteProps<TransformedResponse, undefined, undefined, F>,
     'value' | 'options' | 'renderInput'
   > {
-  service: ServiceFunction<Response[], Params>
+  service: ServiceFunctionNew<Response[]>
   valueField?: keyof TransformedResponse
   labelField?: keyof TransformedResponse
   value: TransformedResponse[keyof TransformedResponse] | null | Category
+  queryOptions: Record<string, unknown>
   fetchCondition?: boolean
   textFieldProps?: TextFieldProps
   fetchOnFocus?: boolean
-  axiosProps?: Pick<
-    UseAxiosProps<Response[], Params, TransformedResponse[]>,
-    'onResponse' | 'onResponseError' | 'transform'
-  >
+  transform?: (params: Response[]) => TransformedResponse[]
+  onResponse?: (responseData: TransformedResponse[]) => Promise<void> | void
+  onResponseError?: (error: ResponseError) => void
 }
 
 const AsyncAutocomplete = <
   Response,
-  Params = undefined,
   TransformedResponse = Response,
   F extends boolean | undefined = undefined
 >({
@@ -41,29 +39,42 @@ const AsyncAutocomplete = <
   valueField,
   labelField,
   value,
+  queryOptions,
   service,
-  axiosProps,
+  transform,
+  onResponse,
+  onResponseError,
   ...props
-}: AsyncAutocompleteProps<Response, Params, TransformedResponse, F>) => {
-  const { loading, response, fetchData } = useAxios<
-    Response[],
-    Params,
-    TransformedResponse[]
-  >({
-    service,
-    fetchOnMount: false,
-    defaultResponse: defaultResponses.array,
-    ...axiosProps
+}: AsyncAutocompleteProps<Response, TransformedResponse, F>) => {
+  const {
+    isLoading: loading,
+    data: response,
+    error,
+    refetch: fetchData
+  } = useQuery({
+    queryFn: service,
+    queryKey: ['async-autocomplete', queryOptions],
+    options: {
+      staleTime: Infinity,
+      select: transform
+    }
   })
 
   useEffect(() => {
-    !fetchOnFocus && (fetchCondition ?? true) && void fetchData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [service])
+    if (response && onResponse) {
+      void onResponse(response)
+    }
+  }, [response, onResponse])
+
+  useEffect(() => {
+    if (error && onResponseError) {
+      onResponseError(error)
+    }
+  }, [error, onResponseError])
 
   const valueOption = useMemo(
     () =>
-      response.find(
+      response?.find(
         (option) => (valueField ? option[valueField] : option) === value
       ) ?? null,
     [response, value, valueField]
@@ -86,7 +97,7 @@ const AsyncAutocomplete = <
   }
 
   const handleFocus = () => {
-    const fetchFocusCondition = fetchCondition ?? !response.length
+    const fetchFocusCondition = fetchCondition ?? !response?.length
     fetchOnFocus && fetchFocusCondition && void fetchData()
   }
 
@@ -96,7 +107,7 @@ const AsyncAutocomplete = <
       isOptionEqualToValue={isOptionEqualToValue}
       loading={loading}
       onFocus={handleFocus}
-      options={response}
+      options={response as TransformedResponse[]}
       textFieldProps={textFieldProps}
       value={valueOption}
       {...props}

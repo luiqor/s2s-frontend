@@ -84,11 +84,11 @@ const CourseToolbar = ({
         CategoryNameInterface,
         CourseExtendedAutocompleteOptions
       >
-        axiosProps={{ transform: transformCategories }}
         groupBy={(option) => option.title}
         labelField='name'
         onBlur={handleBlur('category')}
         onChange={onCategoryChange}
+        queryOptions={{ type: 'categories' }}
         service={categoryService.getCategoriesNames}
         sx={styles.autocomplete}
         textFieldProps={{
@@ -97,6 +97,7 @@ const CourseToolbar = ({
           helperText: errors.category ? t(errors.category) : ' ',
           required: true
         }}
+        transform={transformCategories}
         value={category}
         valueField='_id'
       />
@@ -105,12 +106,12 @@ const CourseToolbar = ({
         SubjectNameInterface,
         CourseExtendedAutocompleteOptions
       >
-        axiosProps={{ transform: transformSubjects }}
         disabled={Boolean(!category)}
         groupBy={(option) => option.title}
         labelField='name'
         onBlur={handleBlur('subject')}
         onChange={onSubjectChange}
+        queryOptions={{ type: 'subjects' }}
         service={getSubjectsNames}
         sx={styles.autocomplete}
         textFieldProps={{
@@ -119,6 +120,7 @@ const CourseToolbar = ({
           helperText: errors.subject ? t(errors.subject) : ' ',
           required: true
         }}
+        transform={transformSubjects}
         value={subject}
         valueField='_id'
       />

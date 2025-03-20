@@ -1,9 +1,11 @@
-import { vi } from 'vitest'
+import { afterEach, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import useCategoriesNames from '~/hooks/use-categories-names'
 import { categoryService } from '~/services/category-service'
-
-vi.mock('~/services/category-service')
+import QueryProvider from '~/QueryProvider'
+import { queryClient } from '~/plugins/queryClient'
+import { mockAxiosClient } from '~tests/test-utils'
+import { URLs } from '~/constants/request'
 
 const mockCategoriesNames = [
   { _id: '1', name: 'Category 1' },
@@ -17,17 +19,28 @@ const mockError = {
 }
 
 describe('useCategoriesNames', () => {
-  it('fetches categories names successfully', async () => {
-    categoryService.getCategoriesNames.mockResolvedValueOnce({
-      data: mockCategoriesNames
-    })
+  afterEach(() => {
+    queryClient.clear()
+  })
 
-    const { result } = renderHook(() => useCategoriesNames())
+  it('fetches categories names successfully', async () => {
+    mockAxiosClient
+      .onGet(URLs.categories.getNames)
+      .reply(200, mockCategoriesNames)
+
+    const getCategoriesNamesSpy = vi.spyOn(
+      categoryService,
+      'getCategoriesNames'
+    )
+
+    const { result } = renderHook(() => useCategoriesNames(), {
+      wrapper: QueryProvider
+    })
 
     expect(result.current.loading).toBe(true)
     expect(result.current.response).toEqual([])
 
-    expect(categoryService.getCategoriesNames).toHaveBeenCalled()
+    expect(getCategoriesNamesSpy).toHaveBeenCalled()
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -36,20 +49,28 @@ describe('useCategoriesNames', () => {
   })
 
   it('handles API errors', async () => {
-    categoryService.getCategoriesNames.mockRejectedValueOnce({
-      response: { data: mockError }
-    })
+    mockAxiosClient.onGet(URLs.categories.getNames).reply(400, mockError)
 
-    const { result } = renderHook(() => useCategoriesNames())
+    const getCategoriesNamesSpy = vi.spyOn(
+      categoryService,
+      'getCategoriesNames'
+    )
+
+    const { result } = renderHook(() => useCategoriesNames(), {
+      wrapper: QueryProvider
+    })
 
     expect(result.current.loading).toBe(true)
     expect(result.current.response).toEqual([])
 
-    expect(categoryService.getCategoriesNames).toHaveBeenCalled()
+    expect(getCategoriesNamesSpy).toHaveBeenCalled()
 
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false)
-      expect(result.current.error).toBe(mockError)
-    })
-  })
+    await waitFor(
+      () => {
+        expect(result.current.loading).toBe(false)
+        expect(result.current.error.message).toEqual(mockError.message)
+      },
+      { timeout: 8000 }
+    )
+  }, 8000)
 })

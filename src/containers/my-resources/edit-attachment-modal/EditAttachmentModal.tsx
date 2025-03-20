@@ -125,6 +125,7 @@ const EditAttachmentModal: FC<EditAttachmentModalProps> = ({
           labelField='name'
           onBlur={handleBlur('category')}
           onChange={onCategoryChange}
+          queryOptions={{ type: 'resources-categories' }}
           service={ResourceService.getResourcesCategoriesNames}
           textFieldProps={{
             error: Boolean(errors.category),
