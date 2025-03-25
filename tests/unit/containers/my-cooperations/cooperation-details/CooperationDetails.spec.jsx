@@ -59,8 +59,53 @@ const cooperationData = {
     lastName: 'Surname',
     role: 'tutor'
   },
+  sections: [
+    {
+      title: 'module 1',
+      description: 'description for module 1',
+      resources: [
+        {
+          resource: {
+            _id: '67d089447c1856f0d205dfe2',
+            author: '67d020fbcda203e190670036',
+            fileName: 'Apoptosis review.pdf',
+            link: '1741719874044-Apoptosis review.pdf',
+            size: 3959441,
+            category: null,
+            resourceType: 'attachment'
+          },
+          resourceType: 'attachment',
+          availability: {
+            status: 'closed',
+            date: null
+          },
+          completionStatus: 'completed'
+        },
+        {
+          resource: {
+            _id: '67d089a57c1856f0d205e00b',
+            author: '67d020fbcda203e190670036',
+            fileName: 'Apoptosis review.pdf',
+            link: '1741719874044-Apoptosis review.pdf',
+            size: 3959441,
+            category: null,
+            resourceType: 'attachment',
+            isDuplicate: true
+          },
+          resourceType: 'attachment',
+          availability: {
+            status: 'open',
+            date: null
+          },
+          completionStatus: 'completed'
+        }
+      ],
+      _id: '67d0250ccda203e190670173'
+    }
+  ],
   createdAt: '2024-01-12T11:28:34.397Z',
-  updatedAt: '2024-01-12T11:28:34.397Z'
+  updatedAt: '2024-01-12T11:28:34.397Z',
+  completedResourcesPercentage: 50
 }
 
 const OPPOSITE_USER_DECIDED_TO_CLOSE_COOPERATION = {
@@ -186,6 +231,13 @@ describe('CooperationDetails', () => {
       'titles.acceptCooperationClosing'
     )
     expect(cooperationClosingModal).toBeInTheDocument()
+  })
+
+  it('should render progress bar with predefined value', () => {
+    const progressBar = screen.getByText(
+      '50% cooperationDetailsPage.progressBar.completed'
+    )
+    expect(progressBar).toBeInTheDocument()
   })
 })
 

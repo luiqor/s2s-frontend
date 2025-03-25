@@ -25,7 +25,9 @@ const setEditMode = vi.fn()
 
 describe('CooperationActivitiesView', () => {
   beforeEach(() => {
-    render(<CooperationActivitiesView setEditMode={setEditMode} />)
+    render(
+      <CooperationActivitiesView progress={'50'} setEditMode={setEditMode} />
+    )
   })
 
   it('should render sections correctly', () => {
@@ -49,5 +51,17 @@ describe('CooperationActivitiesView', () => {
     })
 
     expect(setEditMode).toHaveBeenCalled()
+  })
+
+  it('should render progress bar with 50%', () => {
+    const progressBarHeader = screen.getByText(
+      'cooperationDetailsPage.progressBar.yourProgress'
+    )
+    expect(progressBarHeader).toBeInTheDocument
+
+    const progressBarValue = screen.getByText(
+      '50% cooperationDetailsPage.progressBar.completed'
+    )
+    expect(progressBarValue).toBeInTheDocument()
   })
 })
