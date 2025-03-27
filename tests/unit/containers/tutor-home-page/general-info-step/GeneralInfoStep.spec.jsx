@@ -14,7 +14,6 @@ import { URLs } from '~/constants/request'
 const setIsUserFetched = vi.fn()
 
 const userId = '63f5d0ebb'
-const userRole = 'tutor'
 const userDataMock = { _id: userId, firstName: 'test', lastName: 'test' }
 const countriesDataMock = [
   { name: 'Ukraine', iso2: 'UA' },
@@ -36,7 +35,7 @@ const btnsBox = (
 describe('GeneralInfoStep test', () => {
   beforeEach(() => {
     mockAxiosClient
-      .onGet(`${URLs.users.get}/${userId}?role=${userRole}`)
+      .onGet(new RegExp(URLs.users.getUserById.replace(':id', userId)))
       .reply(200, userDataMock)
     mockAxiosClient
       .onGet(URLs.location.getCountries)
@@ -48,7 +47,6 @@ describe('GeneralInfoStep test', () => {
         )
       )
       .reply(200, citiesDataMock)
-
     renderWithProviders(
       <StepProvider initialValues={initialValues} stepLabels={tutorStepLabels}>
         <GeneralInfoStep
@@ -66,7 +64,6 @@ describe('GeneralInfoStep test', () => {
     const firstNameInput = await screen.findByLabelText(
       /common.labels.firstName/i
     )
-
     fireEvent.change(firstNameInput, { target: { value: 'testName' } })
 
     expect(firstNameInput.value).toBe('testName')

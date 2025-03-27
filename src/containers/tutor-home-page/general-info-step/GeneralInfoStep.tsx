@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { type ReactNode, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import img from '~/assets/img/tutor-home-page/become-tutor/general-info.svg'
@@ -11,7 +11,7 @@ import LocationSelectionInputs from '~/components/location-selection-inputs/Loca
 import { validations } from '~/components/user-steps-wrapper/constants'
 import { styles } from '~/containers/tutor-home-page/general-info-step/GeneralInfoStep.styles'
 import { useStepContext } from '~/context/step-context'
-import useAxios from '~/hooks/use-axios'
+import useQuery from '~/hooks/use-query'
 import useBreakpoints from '~/hooks/use-breakpoints'
 import useForm from '~/hooks/use-form'
 import { useAppSelector } from '~/hooks/use-redux'
@@ -19,23 +19,18 @@ import { userService } from '~/services/user-service'
 import { type UserGeneralInfo, type UserRole } from '~/types'
 
 interface GeneralInfoStepProps {
-  btnsBox: ReactNode
-  isUserFetched: boolean
-  setIsUserFetched: (isUserFetched: boolean) => void
+  btnsBox: React.ReactNode
 }
 
 type UserName = { firstName: string; lastName: string }
 
-const GeneralInfoStep = ({
-  btnsBox,
-  isUserFetched,
-  setIsUserFetched
-}: GeneralInfoStepProps) => {
+const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({ btnsBox }) => {
   const { t } = useTranslation()
   const { isLaptopAndAbove, isMobile } = useBreakpoints()
   const { stepData, handleGeneralInfo } = useStepContext()
   const { userId, userRole } = useAppSelector((state) => state.appMain)
   const generalInfo = stepData.generalInfo
+  const isFirstRender = useRef<boolean>(true)
 
   const {
     handleInputChange,
@@ -56,31 +51,29 @@ const GeneralInfoStep = ({
   })
 
   const getUserById = useCallback(
-    () => userService.getUserById(userId, userRole as UserRole),
+    () => userService.getUserByIdWithBaseService(userId, userRole as UserRole),
     [userId, userRole]
   )
 
-  const updateUserName = useCallback(
-    (user: UserName) => {
-      handleNonInputValueChange('firstName', user.firstName)
-      handleNonInputValueChange('lastName', user.lastName)
-
-      setIsUserFetched(true)
-    },
-    [handleNonInputValueChange, setIsUserFetched]
-  )
-
-  const { loading: userLoading, fetchData: fetchUser } = useAxios({
-    service: getUserById,
-    defaultResponse: { firstName: '', lastName: '' },
-    fetchOnMount: false,
-    onResponse: updateUserName
+  const { isLoading: userLoading, data: userResponse } = useQuery({
+    queryFn: getUserById,
+    queryKey: ['user', userId],
+    options: {
+      staleTime: Infinity
+    }
   })
 
   useEffect(() => {
-    !isUserFetched && void fetchUser()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    const updateUserName = (user: UserName) => {
+      handleNonInputValueChange('firstName', user.firstName)
+      handleNonInputValueChange('lastName', user.lastName)
+    }
+    if (userResponse && isFirstRender.current) {
+      updateUserName(userResponse)
+
+      isFirstRender.current = false
+    }
+  }, [handleNonInputValueChange, userResponse])
 
   useEffect(() => {
     handleGeneralInfo({ data, errors })
