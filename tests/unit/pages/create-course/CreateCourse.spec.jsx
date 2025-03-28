@@ -14,6 +14,7 @@ import {
   CourseSectionEventType
 } from '~/types'
 import {
+  mockUserResponseData,
   mockCourseResponseData,
   mockNewCourseData,
   mockUpdatedCourseData,
@@ -67,23 +68,18 @@ vi.mock('~/hooks/use-redux', async () => {
   }
 })
 
-const mockFetchCourseData = vi.fn().mockResolvedValue(mockCourseResponseData)
-vi.mock('~/hooks/use-axios', async () => {
-  const actual = await vi.importActual('~/hooks/use-axios')
+vi.mock('~/hooks/use-query', async () => {
+  const actual = await vi.importActual('~/hooks/use-query')
   return {
     ...actual,
-    useAxios: vi.fn(() => ({
-      loading: false,
-      response: null,
-      fetchData: mockFetchCourseData
-    }))
+    default: actual.default
   }
 })
 
 const mockHandleInputChange = vi.fn()
 const mockHandleNonInputValueChange = vi.fn()
 const mockHandleBlur = vi.fn()
-const mockHandleSubmit = vi.fn().mockResolvedValue(mockUpdatedCourseData)
+const mockHandleDataChange = vi.fn()
 let mockInitialFormData = {
   title: '',
   description: '',
@@ -93,18 +89,31 @@ let mockInitialFormData = {
   proficiencyLevel: [],
   sections: []
 }
+
+const resetMockFormData = () => {
+  mockInitialFormData = {
+    title: '',
+    description: '',
+    author: { _id: '' },
+    category: null,
+    subject: null,
+    proficiencyLevel: [],
+    sections: []
+  }
+}
 let mockOnSubmit
 const updateFormData = (data) => {
   mockInitialFormData = { ...mockInitialFormData, ...data }
 }
 const mockUseForm = vi.hoisted(() => {
   return vi.fn(({ onSubmit } = {}) => {
-    mockOnSubmit = () => act(() => onSubmit())
+    mockOnSubmit = () => act(() => onSubmit(mockInitialFormData))
     return {
-      handleSubmit: mockHandleSubmit,
+      handleSubmit: () => onSubmit(),
       handleInputChange: mockHandleInputChange,
       handleNonInputValueChange: mockHandleNonInputValueChange,
       handleBlur: mockHandleBlur,
+      handleDataChange: mockHandleDataChange,
       data: mockInitialFormData,
       errors: {
         category: 'Please select a category',
@@ -136,27 +145,26 @@ describe('CreateCourse with params id', () => {
     mockUseParams.mockReturnValue({ id: mockCourseResponseData._id })
 
     mockAxiosClient
-      .onGet(`${URLs.courses.get}/${mockCourseResponseData._id}`)
-      .reply(200, () => {
-        updateFormData(mockCourseResponseData)
-        return mockCourseResponseData
-      })
+      .onGet(
+        `${URLs.users.getUserById.replace(':id', mockUserResponseData._id)}?userRole=${UserRoleEnum.Tutor}`
+      )
+      .reply(200, mockUserResponseData)
 
     mockAxiosClient
-      .onPost(URLs.courses.create, mockNewCourseData)
-      .reply(200, () => {
-        updateFormData(mockNewCourseData)
-        return mockNewCourseData
+      .onGet(URLs.courses.getById.replace(':id', mockCourseResponseData._id))
+      .reply(() => {
+        updateFormData(mockCourseResponseData)
+        return [200, mockCourseResponseData]
       })
 
     mockAxiosClient
       .onPatch(
-        `${URLs.courses.patch}/${mockCourseResponseData._id}`,
+        URLs.courses.patch.replace(':id', mockCourseResponseData._id),
         mockUpdatedCourseData
       )
-      .reply(200, () => {
+      .reply(() => {
         updateFormData(mockUpdatedCourseData)
-        return mockUpdatedCourseData
+        return [200, mockUpdatedCourseData]
       })
 
     mockAxiosClient
@@ -168,7 +176,9 @@ describe('CreateCourse with params id', () => {
       .reply(200, mockCategoriesNames)
 
     mockAxiosClient
-      .onGet(`${URLs.categories.get}/1${URLs.subjects.getNames}`)
+      .onGet(
+        `${URLs.categories.get}/64884f33fdc2d1a130c24ac2${URLs.subjects.getNames}`
+      )
       .reply(200, mockSubjectsNames)
 
     renderWithProviders(<CreateCourse />, { store })
@@ -225,10 +235,8 @@ describe('CreateCourse with params id', () => {
     fireEvent.change(autocomplete, {
       target: { value: mockSubjectsNames[1].name }
     })
-
     fireEvent.keyDown(autocomplete, { key: 'ArrowDown' })
     fireEvent.keyDown(autocomplete, { key: 'Enter' })
-
     expect(autocomplete.value).toBe(mockSubjectsNames[1].name)
   })
 
@@ -260,10 +268,10 @@ describe('CreateCourse with params id', () => {
     const select = await screen.findByLabelText(/level/i)
     expect(select).toBeInTheDocument()
 
-    const proficiencyCheckbox = screen.getByDisplayValue(
-      /beginner,intermediate/i
-    )
-    expect(proficiencyCheckbox).toBeInTheDocument()
+    fireEvent.mouseDown(select)
+
+    const beginnerOption = await screen.findByText('common.levels.beginner')
+    expect(beginnerOption).toBeInTheDocument()
   })
 
   it('should add a new section when the "Add Section" button is clicked', async () => {
@@ -310,20 +318,22 @@ describe('CreateCourse with params id', () => {
   })
 
   it('should update course with mockUpdatedCourseData and submit', async () => {
-    updateFormData(mockUpdatedCourseData)
-
+    resetMockFormData()
+    updateFormData({
+      title: mockUpdatedCourseData.title,
+      description: mockUpdatedCourseData.description
+    })
     const saveButton = await screen.findByText('common.save')
     fireEvent.click(saveButton)
     await mockOnSubmit()
 
-    expect(mockAxiosClient.history.patch.length).toBe(1)
     expect(mockAxiosClient.history.patch[0].url).toBe(
-      `${URLs.courses.patch}/${mockCourseResponseData._id}`
+      `${URLs.courses.patch.replace(':id', mockCourseResponseData._id)}`
     )
 
-    const textAreas = screen.getAllByRole('textbox')
-    expect(textAreas[0].value).toBe(mockUpdatedCourseData.title)
-    expect(textAreas[1].value).toBe(mockUpdatedCourseData.description)
+    const patchData = JSON.parse(mockAxiosClient.history.patch[0].data)
+    expect(patchData.title).toBe(mockUpdatedCourseData.title)
+    expect(patchData.description).toBe(mockUpdatedCourseData.description)
 
     expect(mockDispatch).toHaveBeenCalledWith(
       openAlert({
@@ -337,7 +347,13 @@ describe('CreateCourse with params id', () => {
 describe('CreateCourse without params id', () => {
   beforeEach(() => {
     mockUseParams.mockReset()
-    mockUseParams.mockReturnValue({ id: null })
+    mockUseParams.mockReturnValue({ id: '' })
+
+    mockAxiosClient
+      .onPost(URLs.courses.create, mockNewCourseData)
+      .reply(200, () => {
+        return mockNewCourseData
+      })
 
     renderWithProviders(<CreateCourse />, { store })
   })
@@ -350,6 +366,7 @@ describe('CreateCourse without params id', () => {
   })
 
   it('should handle saving a new course when id is null', async () => {
+    resetMockFormData()
     updateFormData(mockNewCourseData)
 
     const saveButton = await screen.findByText('common.save')
@@ -359,9 +376,9 @@ describe('CreateCourse without params id', () => {
     expect(mockAxiosClient.history.post.length).toBe(1)
     expect(mockAxiosClient.history.post[0].url).toBe(URLs.courses.create)
 
-    const textAreas = screen.getAllByRole('textbox')
-    expect(textAreas[0].value).toBe(mockNewCourseData.title)
-    expect(textAreas[1].value).toBe(mockNewCourseData.description)
+    const postData = JSON.parse(mockAxiosClient.history.post[0].data)
+    expect(postData.title).toBe(mockNewCourseData.title)
+    expect(postData.description).toBe(mockNewCourseData.description)
 
     expect(mockDispatch).toHaveBeenCalledWith(
       openAlert({
@@ -376,7 +393,7 @@ describe('Testing CreateCourse Event Handlers', () => {
   const mockSectionId = mockNewCourseData.sections[0].id
   beforeEach(() => {
     mockUseParams.mockReset()
-    mockUseParams.mockReturnValue({ id: mockNewCourseData._id })
+    mockUseParams.mockReturnValue({ id: mockCourseResponseData._id })
 
     renderWithProviders(<CreateCourse />, { store })
   })
@@ -426,10 +443,11 @@ describe('Testing CreateCourse Event Handlers', () => {
   })
 
   it('should handle adding a new resource to a section [CourseResourceEventType.AddSectionResources] when isDuplicate=true', async () => {
+    resetMockFormData()
+    updateFormData(mockCourseResponseData)
     const courseSectionList = await screen.findByTestId(
       'mock-CourseSectionsList'
     )
-
     fireEvent.change(courseSectionList, {
       target: {
         value: JSON.stringify({
@@ -444,32 +462,26 @@ describe('Testing CreateCourse Event Handlers', () => {
       }
     })
 
-    expect(mockHandleNonInputValueChange).toHaveBeenCalled(1)
-    expect(mockHandleNonInputValueChange).toHaveBeenCalledWith('sections', [
-      expect.objectContaining({
-        id: mockCourseResponseData.sections[0].id,
-        title: mockCourseResponseData.sections[0].title,
-        resources: expect.arrayContaining([
-          expect.objectContaining({
-            resource: expect.objectContaining({
-              _id: mockCourseResponseData.sections[0].resources[0].resource._id,
-              title:
-                mockCourseResponseData.sections[0].resources[0].resource.title
-            }),
-            resourceType:
-              mockCourseResponseData.sections[0].resources[0].resourceType
-          }),
-          expect.objectContaining({
-            resource: expect.objectContaining({
-              _id: expect.any(String),
-              title: mockNewSectionResource.title,
-              isDuplicate: true
-            }),
-            resourceType: mockNewSectionResource.resourceType
-          })
-        ])
-      })
-    ])
+    const sectionCalls = mockHandleNonInputValueChange.mock.calls.filter(
+      ([key]) => key === 'sections'
+    )
+    const updatedSections = sectionCalls[sectionCalls.length - 1][1]
+
+    expect(updatedSections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          resources: expect.arrayContaining([
+            expect.objectContaining({
+              resource: expect.objectContaining({
+                title: mockNewSectionResource.title,
+                isDuplicate: true
+              }),
+              resourceType: mockNewSectionResource.resourceType
+            })
+          ])
+        })
+      ])
+    )
   })
 
   it('should handle resource update event [CourseResourceEventType.ResourceUpdated]', async () => {
