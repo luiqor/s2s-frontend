@@ -10,7 +10,6 @@ import SliderWithInput from '~/components/slider-with-input/SliderWithInput'
 import Button from '~scss-components/button/Button'
 import Loader from '~/components/loader/Loader'
 import useForm from '~/hooks/use-form'
-import useAxios from '~/hooks/use-axios'
 import useMutation from '~/hooks/use-mutation'
 import useBreakpoints from '~/hooks/use-breakpoints'
 import useConfirm from '~/hooks/use-confirm'
@@ -23,15 +22,12 @@ import {
   ButtonTypeEnum,
   ComponentEnum,
   type Cooperation,
-  type ErrorResponse,
   StatusEnum,
   type UpdateCooperationsParams
 } from '~/types'
 import { snackbarVariants } from '~/constants'
 import { styles } from '~/containers/my-cooperations/accept-cooperation-modal/AcceptCooperation.styles'
-import { useAppDispatch } from '~/hooks/use-redux'
-import { openAlert } from '~/redux/features/snackbarSlice'
-import { getErrorKey } from '~/utils/get-error-key'
+import useSnackbarAlert from '~/hooks/use-snackbar-alert'
 
 interface AcceptCooperationModalProps {
   cooperation: Cooperation
@@ -44,7 +40,7 @@ const AcceptCooperationModal: React.FC<AcceptCooperationModalProps> = ({
   const { isDesktop } = useBreakpoints()
   const { closeModal } = useModalContext()
   const { checkConfirmation } = useConfirm()
-  const dispatch = useAppDispatch()
+  const { handleAlert, handleErrorAlert } = useSnackbarAlert()
   const [minPrice, maxPrice] = minMaxPrice(cooperation.offer.price, 0.25)
 
   const needAction = cooperation.user.role !== cooperation.needAction.role
@@ -59,29 +55,21 @@ const AcceptCooperationModal: React.FC<AcceptCooperationModalProps> = ({
     [cooperation._id]
   )
 
-  const updateOffer = useCallback(
+  const handleUpdateOffer = useCallback(
     () =>
-      OfferService.updateOffer(cooperation.offer._id, { enrolledUsers: [] }),
+      OfferService.updateOfferWithBaseService(cooperation.offer._id, {
+        enrolledUsers: []
+      }),
     [cooperation.offer._id]
   )
 
   const onResponse = () => {
-    dispatch(
-      openAlert({
-        severity: snackbarVariants.success,
-        message: 'cooperationsPage.acceptModal.successMessage'
-      })
-    )
-    closeModal()
-  }
+    handleAlert({
+      severity: snackbarVariants.success,
+      message: 'cooperationsPage.acceptModal.successMessage'
+    })
 
-  const onResponseError = (error?: ErrorResponse) => {
-    dispatch(
-      openAlert({
-        severity: snackbarVariants.error,
-        message: getErrorKey(error)
-      })
-    )
+    closeModal()
   }
 
   const { isPending: isUpdateCooperationPending, mutate: updateCooperation } =
@@ -89,14 +77,13 @@ const AcceptCooperationModal: React.FC<AcceptCooperationModalProps> = ({
       mutationFn: handleUpdateCooperation,
       queryKey: ['cooperations'],
       onSuccess: onResponse,
-      onError: onResponseError
+      onError: handleErrorAlert
     })
 
-  const { loading: updateLoading, fetchData: fetchUpdateOffer } = useAxios({
-    service: updateOffer,
-    fetchOnMount: false,
-    defaultResponse: null,
-    onResponseError
+  const { isPending: updateLoading, mutate: updateOffer } = useMutation({
+    mutationFn: handleUpdateOffer,
+    queryKey: ['cooperations'],
+    onError: handleErrorAlert
   })
 
   const handleAcceptCooperation = useCallback(async () => {
@@ -121,10 +108,10 @@ const AcceptCooperationModal: React.FC<AcceptCooperationModalProps> = ({
     })
 
     if (confirmed) {
-      await fetchUpdateOffer()
+      updateOffer()
       updateCooperation({ status: StatusEnum.Closed })
     }
-  }, [checkConfirmation, fetchUpdateOffer, t, updateCooperation])
+  }, [checkConfirmation, updateOffer, t, updateCooperation])
 
   const handleResendCooperation = useCallback(
     async (data?: Record<'price', number>) => {
