@@ -14,7 +14,6 @@ import useBreakpoints from '~/hooks/use-breakpoints'
 import usePagination from '~/hooks/table/use-pagination'
 import AddDocuments from '~/containers/add-documents/AddDocuments'
 
-import { defaultResponses } from '~/constants'
 import {
   columns,
   initialSort,
@@ -29,6 +28,7 @@ import useMutation from '~/hooks/use-mutation'
 import useQuery from '~/hooks/use-query'
 import useSnackbarAlert from '~/hooks/use-snackbar-alert'
 import { queryClient } from '~/plugins/queryClient'
+import { defaultResponses } from '~/constants'
 
 const AttachmentsContainer: React.FC = () => {
   const { t } = useTranslation()
@@ -59,7 +59,9 @@ const AttachmentsContainer: React.FC = () => {
   const { mutate: handleDeleteAttachment } = useMutation({
     mutationFn: ResourceService.deleteAttachment,
     onError: handleErrorAlert,
-    onSuccess: () => { handleSuccessAlert(`myResourcesPage.attachments.successDeletion`)},
+    onSuccess: () => {
+      handleSuccessAlert(`myResourcesPage.attachments.successDeletion`)
+    },
     queryKey: ['attachments']
   })
 
@@ -140,7 +142,7 @@ const AttachmentsContainer: React.FC = () => {
 
   const props = {
     columns: columnsToShow,
-    resourceItems: loadedAttachments,
+    resourceItems: loadedAttachments ?? defaultResponses.itemsWithCount,
     itemsPerPage,
     actions: { onEdit, onDelete: handleDeleteAttachment },
     resourceType: ResourcesTabsEnum.Attachments,

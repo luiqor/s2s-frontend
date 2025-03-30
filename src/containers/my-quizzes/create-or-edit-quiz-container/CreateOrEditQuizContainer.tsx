@@ -3,7 +3,6 @@ import {
   useEffect,
   useState,
   useRef,
-  type ComponentRef,
   type ChangeEvent
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -67,9 +66,9 @@ const CreateOrEditQuizContainer: React.FC<QuizContentProps> = ({
   const { id = '' } = useParams()
   const { handleErrorAlert, handleAlert } = useSnackbarAlert()
   const [isCreationOpen, setIsCreationOpen] = useState<boolean>(false)
-  const modalRef = useRef<ComponentRef<typeof CreateOrEditQuizQuestion> | null>(
-    null
-  )
+  const modalRef = useRef<{
+    openCreateModal: () => void
+  } | null>(null)
 
   const onCategoryChange = (
     _: React.SyntheticEvent,

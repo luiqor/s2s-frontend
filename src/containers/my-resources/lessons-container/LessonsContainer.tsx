@@ -126,11 +126,7 @@ const LessonsContainer = () => {
 
   const props = {
     columns: columnsToShow,
-    data: {
-      response: lessons ?? defaultResponses.itemsWithCount,
-      getData: handleInvalidateLessons
-    },
-    services: { deleteService: handleDeleteLesson },
+    resourceItems: lessons ?? defaultResponses.itemsWithCount,
     itemsPerPage,
     actions: { onEdit, onDelete: handleDeleteLesson },
     resourceType: ResourcesTabsEnum.Lessons,

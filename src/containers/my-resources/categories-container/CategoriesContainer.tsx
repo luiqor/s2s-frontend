@@ -61,11 +61,6 @@ const CategoriesContainer = () => {
     })
   }, [page, itemsPerPage, sort, searchTitle])
 
-  const deleteCategory = useCallback(
-    (id?: string) => ResourceService.deleteResourceCategory(id ?? ''),
-    []
-  )
-
   const {
     error,
     data: categories,
@@ -162,11 +157,7 @@ const CategoriesContainer = () => {
   const props = {
     actions: { onEdit, onDelete: handleDeleteCategory },
     columns: columnsToShow,
-    data: {
-      response: categories ?? defaultResponses.itemsWithCount,
-      getData: updateInfo
-    },
-    services: { deleteService: deleteCategory },
+    resourceItems: categories ?? defaultResponses.itemsWithCount,
     pagination: { page, onChange: handleChangePage },
     sort: sortOptions,
     itemsPerPage,

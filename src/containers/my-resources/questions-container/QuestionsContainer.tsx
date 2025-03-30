@@ -92,7 +92,9 @@ const QuestionsContainer: React.FC = () => {
         return
       }
 
-      const item = questions.items.find((element) => element._id === id)
+      const item = questions?.items?.find(
+        (element: Question) => element._id === id
+      )
 
       if (!item) {
         handleErrorAlert(DuplicateQuestionErrors.QUESTION_NOT_FOUND)

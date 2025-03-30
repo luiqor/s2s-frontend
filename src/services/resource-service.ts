@@ -202,12 +202,7 @@ export const ResourceService = {
       })
     })
   },
-  getQuestions: (
-    params?: GetResourcesParams
-  ): Promise<AxiosResponse<ItemsWithCount<Question>>> => {
-    return axiosClient.get(URLs.resources.questions.get, { params })
-  },
-  getQuestionsQuery: (params?: GetResourcesParams) => {
+  getQuestions: (params?: GetResourcesParams) => {
     return baseService.request<ItemsWithCount<Question>>({
       method: 'GET',
       url: getFullUrl({
@@ -216,7 +211,6 @@ export const ResourceService = {
       })
     })
   },
-
   getQuestion: (id: string) => {
     return baseService.request<GetQuestion>({
       method: 'GET',
@@ -226,7 +220,6 @@ export const ResourceService = {
       })
     })
   },
-
   createQuestion: (data: CreateQuestionData) => {
     return baseService.request<Question>({
       method: 'POST',
@@ -234,7 +227,6 @@ export const ResourceService = {
       data
     })
   },
-
   updateQuestion: (data: UpdateQuestionParams) => {
     const { id, ...questionData } = data
 
@@ -256,10 +248,14 @@ export const ResourceService = {
       })
     })
   },
-  getResourcesCategories: (
-    params?: GetResourcesCategoriesParams
-  ): Promise<AxiosResponse<ItemsWithCount<Categories>>> => {
-    return axiosClient.get(URLs.resources.resourcesCategories.get, { params })
+  getResourcesCategories: (params?: GetResourcesCategoriesParams) => {
+    return baseService.request<ItemsWithCount<Categories>>({
+      method: 'GET',
+      url: getFullUrl({
+        pathname: URLs.resources.resourcesCategories.get,
+        searchParameters: params
+      })
+    })
   },
   getResourcesCategoriesNames: () => {
     return baseService.request<CategoryNameInterface[]>({
