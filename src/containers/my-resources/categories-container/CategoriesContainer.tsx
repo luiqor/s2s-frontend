@@ -110,7 +110,7 @@ const CategoriesContainer = () => {
     onSuccess: () => {
       handleSuccessAlert(`myResourcesPage.categories.successDeletion`)
     },
-    queryKey: ['resource-categories']
+    queryKey: ['categories']
   })
 
   const { mutate: handleCreateCategory } = useMutation({
