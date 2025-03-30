@@ -90,7 +90,7 @@ const AttachmentsContainer: React.FC = () => {
   })
 
   const { mutate: handleCreateAttachment } = useMutation({
-    mutationFn: ResourceService.createAttachments,
+    mutationFn: ResourceService.createAttachment,
     onError: handleErrorAlert,
     queryKey: ['attachments']
   })

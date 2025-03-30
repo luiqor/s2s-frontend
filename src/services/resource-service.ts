@@ -188,7 +188,7 @@ export const ResourceService = {
       data: attachmentData
     })
   },
-  createAttachments: (data?: FormData): Promise<AxiosResponse> => {
+  createAttachment: (data?: FormData): Promise<AxiosResponse> => {
     return axiosClient.post(URLs.attachments.post, data, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })

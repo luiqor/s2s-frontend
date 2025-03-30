@@ -154,7 +154,7 @@ describe('resourseService tests', () => {
       URLs.quizzes.delete.replace(':id', quizId)
     )
   })
-  
+
   it('should get resource categories names', async () => {
     const mockResponse = [
       { _id: '1', name: 'Category 1' },
@@ -194,13 +194,21 @@ describe('resourseService tests', () => {
     const resourceCategoryId = '6255bc080a75adf9223df444'
 
     mockAxiosClient
-      .onDelete(URLs.resources.resourcesCategories.delete.replace(':id', resourceCategoryId))
+      .onDelete(
+        URLs.resources.resourcesCategories.delete.replace(
+          ':id',
+          resourceCategoryId
+        )
+      )
       .reply(200)
 
     await ResourceService.deleteResourceCategory(resourceCategoryId)
 
     expect(mockAxiosClient.history.delete[0].url).toBe(
-      URLs.resources.resourcesCategories.delete.replace(':id', resourceCategoryId)
+      URLs.resources.resourcesCategories.delete.replace(
+        ':id',
+        resourceCategoryId
+      )
     )
   })
 
@@ -224,11 +232,10 @@ describe('resourseService tests', () => {
       return [200, mockAttachmentResponse]
     })
 
-    const updatedAttachmentResponse =
-      await ResourceService.updateAttachmentQuery({
-        ...attachment,
-        id: attachmentId
-      })
+    const updatedAttachmentResponse = await ResourceService.updateAttachment({
+      ...attachment,
+      id: attachmentId
+    })
 
     expect(updatedAttachmentResponse).toEqual(mockAttachmentResponse)
   })
@@ -310,7 +317,7 @@ describe('resourseService tests', () => {
 
     const response = await ResourceService.createAttachment(attachment)
 
-    expect(response).toEqual(mockAttachmentResponse)
+    expect(response.data).toEqual(mockAttachmentResponse)
   })
 
   it('should update a question', async () => {
