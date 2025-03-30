@@ -26,6 +26,7 @@ import { adjustColumns, getScreenBasedLimit } from '~/utils/helper-functions'
 import { useModalContext } from '~/context/modal-context'
 import ChangeResourceConfirmModal from '~/containers/change-resource-confirm-modal/ChangeResourceConfirmModal'
 import { getFullUrl } from '~/utils/get-full-url'
+import useMutation from '~/hooks/use-mutation'
 
 const LessonsContainer = () => {
   const navigate = useNavigate()
@@ -35,8 +36,8 @@ const LessonsContainer = () => {
   const searchTitle = useRef<string>('')
   const breakpoints = useBreakpoints()
   const [selectedItems, setSelectedItems] = useState<string[]>([])
-  const { handleErrorAlert } = useSnackbarAlert()
   const queryClient = useQueryClient()
+  const { handleErrorAlert, handleSuccessAlert } = useSnackbarAlert()
 
   const { sort } = sortOptions
   const itemsPerPage = getScreenBasedLimit(breakpoints, itemsLoadLimit)
@@ -56,10 +57,14 @@ const LessonsContainer = () => {
     })
   }, [page, itemsPerPage, sort, searchTitle, selectedItems])
 
-  const deleteLesson = useCallback(
-    (id?: string) => ResourceService.deleteLesson(id ?? ''),
-    []
-  )
+  const { mutate: handleDeleteLesson } = useMutation({
+    mutationFn: ResourceService.deleteLesson,
+    onError: handleErrorAlert,
+    onSuccess: () => {
+      handleSuccessAlert(`myResourcesPage.lessons.successDeletion`)
+    },
+    queryKey: ['lessons']
+  })
 
   const {
     data: lessons,
@@ -121,14 +126,10 @@ const LessonsContainer = () => {
 
   const props = {
     columns: columnsToShow,
-    data: {
-      response: lessons ?? defaultResponses.itemsWithCount,
-      getData: handleInvalidateLessons
-    },
-    services: { deleteService: deleteLesson },
+    resourceItems: lessons ?? defaultResponses.itemsWithCount,
     itemsPerPage,
-    actions: { onEdit },
-    resource: ResourcesTabsEnum.Lessons,
+    actions: { onEdit, onDelete: handleDeleteLesson },
+    resourceType: ResourcesTabsEnum.Lessons,
     sort: sortOptions,
     pagination: { page, onChange: handleChangePage }
   }

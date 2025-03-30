@@ -14,7 +14,6 @@ import useBreakpoints from '~/hooks/use-breakpoints'
 import usePagination from '~/hooks/table/use-pagination'
 import AddDocuments from '~/containers/add-documents/AddDocuments'
 
-import { defaultResponses } from '~/constants'
 import {
   columns,
   initialSort,
@@ -29,6 +28,7 @@ import useMutation from '~/hooks/use-mutation'
 import useQuery from '~/hooks/use-query'
 import useSnackbarAlert from '~/hooks/use-snackbar-alert'
 import { queryClient } from '~/plugins/queryClient'
+import { defaultResponses } from '~/constants'
 
 const AttachmentsContainer: React.FC = () => {
   const { t } = useTranslation()
@@ -39,7 +39,7 @@ const AttachmentsContainer: React.FC = () => {
   const searchFileName = useRef<string>('')
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const formData = new FormData()
-  const { handleErrorAlert } = useSnackbarAlert()
+  const { handleSuccessAlert, handleErrorAlert } = useSnackbarAlert()
 
   const { sort } = sortOptions
   const itemsPerPage = getScreenBasedLimit(breakpoints, itemsLoadLimit)
@@ -56,10 +56,14 @@ const AttachmentsContainer: React.FC = () => {
     [itemsPerPage, page, sort, searchFileName, selectedItems]
   )
 
-  const deleteAttachment = useCallback(
-    (id?: string) => ResourceService.deleteAttachment(id ?? ''),
-    []
-  )
+  const { mutate: handleDeleteAttachment } = useMutation({
+    mutationFn: ResourceService.deleteAttachment,
+    onError: handleErrorAlert,
+    onSuccess: () => {
+      handleSuccessAlert(`myResourcesPage.attachments.successDeletion`)
+    },
+    queryKey: ['attachments']
+  })
 
   const {
     data: loadedAttachments,
@@ -138,14 +142,10 @@ const AttachmentsContainer: React.FC = () => {
 
   const props = {
     columns: columnsToShow,
-    data: {
-      response: loadedAttachments ?? defaultResponses.itemsWithCount,
-      getData: invalidateAttachments
-    },
-    services: { deleteService: deleteAttachment },
+    resourceItems: loadedAttachments ?? defaultResponses.itemsWithCount,
     itemsPerPage,
-    actions: { onEdit },
-    resource: ResourcesTabsEnum.Attachments,
+    actions: { onEdit, onDelete: handleDeleteAttachment },
+    resourceType: ResourcesTabsEnum.Attachments,
     sort: sortOptions,
     pagination: { page, onChange: handleChangePage },
     sx: styles.table

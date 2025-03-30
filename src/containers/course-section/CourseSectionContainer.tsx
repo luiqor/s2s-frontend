@@ -140,20 +140,33 @@ const CourseSectionContainer: React.FC<SectionProps> = ({
     [sectionData, resourceEventHandler]
   )
 
-  const deleteResource = (resource: CourseResource) => {
-    if (resource.isDuplicate) {
-      if (resource.resourceType === ResourcesTypesEnum.Lesson) {
-        void ResourceService.deleteLesson(resource._id)
-      }
+  const { mutate: handleDeleteResource } = useMutation<
+    void,
+    Error,
+    { resourceId: string; resource: CourseResource }
+  >({
+    mutationFn: async ({ resourceId, resource }) => {
+      switch (resource.resourceType) {
+        case ResourcesTypesEnum.Lesson: {
+          return ResourceService.deleteLesson(resourceId)
+        }
 
-      if (resource.resourceType === ResourcesTypesEnum.Quiz) {
-        void ResourceService.deleteQuiz(resource._id)
-      }
+        case ResourcesTypesEnum.Quiz: {
+          return ResourceService.deleteQuiz(resourceId)
+        }
 
-      if (resource.resourceType === ResourcesTypesEnum.Attachment) {
-        void ResourceService.deleteAttachment(resource._id)
+        case ResourcesTypesEnum.Attachment: {
+          return ResourceService.deleteAttachment(resourceId)
+        }
       }
     }
+  })
+
+  const deleteResource = (resource: CourseResource) => {
+    if (resource.isDuplicate) {
+      handleDeleteResource({ resourceId: resource._id, resource })
+    }
+
     resourceEventHandler?.({
       type: CourseResourceEventType.ResourceRemoved,
       sectionId: sectionData.id,

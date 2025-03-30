@@ -56,8 +56,15 @@ export const ResourceService = {
       })
     })
   },
-  deleteLesson: async (id: string): Promise<AxiosResponse<Lesson>> =>
-    await axiosClient.delete(createUrlPath(URLs.resources.lessons.delete, id)),
+  deleteLesson: (id: string) => {
+    return baseService.request<void>({
+      method: 'DELETE',
+      url: getFullUrl({
+        pathname: URLs.resources.lessons.delete,
+        parameters: { id }
+      })
+    })
+  },
   addLesson: async (data: LessonData) => {
     return baseService.request<Lesson & { category: string | null }>({
       method: 'POST',
@@ -116,8 +123,15 @@ export const ResourceService = {
       data: quizData
     })
   },
-  deleteQuiz: async (id: string): Promise<AxiosResponse> =>
-    await axiosClient.delete(createUrlPath(URLs.quizzes.delete, id)),
+  deleteQuiz: (id: string) => {
+    return baseService.request<void>({
+      method: 'DELETE',
+      url: getFullUrl({
+        pathname: URLs.quizzes.delete,
+        parameters: { id }
+      })
+    })
+  },
   addFinishedQuiz: async (data: CreateFinishedQuizParams) => {
     return baseService.request<FinishedQuiz>({
       method: 'POST',
@@ -174,19 +188,20 @@ export const ResourceService = {
       data: attachmentData
     })
   },
-  deleteAttachment: async (id: string): Promise<AxiosResponse> => {
-    return await axiosClient.delete(
-      createUrlPath(URLs.resources.attachments.delete, id)
-    )
-  },
-  createAttachment: (data: FormData) => {
-    return baseService.request<Attachment>({
-      method: 'POST',
-      url: URLs.resources.attachments.post,
-      data
+  createAttachment: (data?: FormData): Promise<AxiosResponse> => {
+    return axiosClient.post(URLs.attachments.post, data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
-
+  deleteAttachment: (id: string) => {
+    return baseService.request<void>({
+      method: 'DELETE',
+      url: getFullUrl({
+        pathname: URLs.resources.attachments.delete,
+        parameters: { id }
+      })
+    })
+  },
   getQuestions: (params?: GetResourcesParams) => {
     return baseService.request<ItemsWithCount<Question>>({
       method: 'GET',
@@ -196,7 +211,6 @@ export const ResourceService = {
       })
     })
   },
-
   getQuestion: (id: string) => {
     return baseService.request<GetQuestion>({
       method: 'GET',
@@ -206,7 +220,6 @@ export const ResourceService = {
       })
     })
   },
-
   createQuestion: (data: CreateQuestionData) => {
     return baseService.request<Question>({
       method: 'POST',
@@ -214,7 +227,6 @@ export const ResourceService = {
       data
     })
   },
-
   updateQuestion: (data: UpdateQuestionParams) => {
     const { id, ...questionData } = data
 
@@ -227,12 +239,16 @@ export const ResourceService = {
       data: questionData
     })
   },
-
-  deleteQuestion: async (id: string): Promise<AxiosResponse> =>
-    await axiosClient.delete(
-      createUrlPath(URLs.resources.questions.delete, id)
-    ),
-  getResourcesCategories: (params: GetResourcesCategoriesParams) => {
+  deleteQuestion: (id: string) => {
+    return baseService.request<void>({
+      method: 'DELETE',
+      url: getFullUrl({
+        pathname: URLs.resources.questions.delete,
+        parameters: { id }
+      })
+    })
+  },
+  getResourcesCategories: (params?: GetResourcesCategoriesParams) => {
     return baseService.request<ItemsWithCount<Categories>>({
       method: 'GET',
       url: getFullUrl({
@@ -254,10 +270,15 @@ export const ResourceService = {
       data: params
     })
   },
-  deleteResourceCategory: async (id: string): Promise<AxiosResponse> =>
-    await axiosClient.delete(
-      createUrlPath(URLs.resources.resourcesCategories.delete, id)
-    )
+  deleteResourceCategory: (id: string) => {
+    return baseService.request<void>({
+      method: 'DELETE',
+      url: getFullUrl({
+        pathname: URLs.resources.resourcesCategories.delete,
+        parameters: { id }
+      })
+    })
+  }
 }
 
 export const resourceService = appApi.injectEndpoints({

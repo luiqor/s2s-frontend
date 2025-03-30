@@ -1,8 +1,6 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import Box from '@mui/material/Box'
-import type { AxiosResponse } from 'axios'
 
 import { ResourceService } from '~/services/resource-service'
 import AddResourceWithInput from '~/containers/my-resources/add-resource-with-input/AddResourceWithInput'
@@ -24,19 +22,19 @@ import {
   removeColumnRules,
   DuplicateQuestionErrors
 } from '~/containers/my-resources/questions-container/QuestionsContainer.constants'
-import { ResourcesTabsEnum, type Question } from '~/types'
 import { getFullUrl } from '~/utils/get-full-url'
+import { ResourcesTabsEnum, type Question } from '~/types'
 import { adjustColumns, getScreenBasedLimit } from '~/utils/helper-functions'
 
 const QuestionsContainer: React.FC = () => {
   const sortOptions = useSort({ initialSort })
   const searchTitle = useRef('')
   const breakpoints = useBreakpoints()
-  const queryClient = useQueryClient()
-  const { handleAlert, handleErrorAlert } = useSnackbarAlert()
   const navigate = useNavigate()
   const { page, handleChangePage } = usePagination()
   const [selectedItems, setSelectedItems] = useState<string[]>([])
+  const { handleAlert, handleErrorAlert, handleSuccessAlert } =
+    useSnackbarAlert()
 
   const { sort } = sortOptions
   const itemsPerPage = getScreenBasedLimit(breakpoints, itemsLoadLimit)
@@ -69,14 +67,14 @@ const QuestionsContainer: React.FC = () => {
     }
   })
 
-  const deleteQuestion = useCallback(
-    async (id?: string): Promise<AxiosResponse<unknown>> => {
-      const response = await ResourceService.deleteQuestion(id ?? '')
-      await queryClient.invalidateQueries({ queryKey: ['questions'] })
-      return response
+  const { mutate: handleDeleteQuestion } = useMutation({
+    mutationFn: ResourceService.deleteQuestion,
+    onError: handleErrorAlert,
+    onSuccess: () => {
+      handleSuccessAlert(`myResourcesPage.questions.successDeletion`)
     },
-    [queryClient]
-  )
+    queryKey: ['questions']
+  })
 
   const editQuestion = (id: string) => {
     navigate(
@@ -94,7 +92,9 @@ const QuestionsContainer: React.FC = () => {
         return
       }
 
-      const item = questions.items.find((element) => element._id === id)
+      const item = questions?.items?.find(
+        (element: Question) => element._id === id
+      )
 
       if (!item) {
         handleErrorAlert(DuplicateQuestionErrors.QUESTION_NOT_FOUND)
@@ -134,19 +134,14 @@ const QuestionsContainer: React.FC = () => {
 
   const props = {
     columns: columnsToShow,
-    data: {
-      response: questions ?? defaultResponses.itemsWithCount,
-      getData: getQuestions
-    },
-    services: {
-      deleteService: deleteQuestion
-    },
+    resourceItems: questions ?? defaultResponses.itemsWithCount,
     itemsPerPage,
     actions: {
       onEdit: editQuestion,
-      onDuplicate: duplicateItem
+      onDuplicate: duplicateItem,
+      onDelete: handleDeleteQuestion
     },
-    resource: ResourcesTabsEnum.Questions,
+    resourceType: ResourcesTabsEnum.Questions,
     sort: sortOptions,
     pagination: { page, onChange: handleChangePage }
   }
