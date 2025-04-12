@@ -252,7 +252,9 @@ const CourseSectionContainer: React.FC<SectionProps> = ({
     resources: T[],
     isDuplicate: boolean
   ) => {
-    const newResources: (Lesson | Quiz)[] = []
+    const newResources: (Lesson | Quiz | Attachment)[] = []
+    console.log('newResources', newResources, 'isDuplicate', isDuplicate)
+
     if (isDuplicate) {
       for (const resource of resources) {
         if (resource.resourceType === ResourcesTypesEnum.Lesson) {
@@ -268,18 +270,30 @@ const CourseSectionContainer: React.FC<SectionProps> = ({
           })
 
           newResources.push(newLesson)
-        } else if (resource.resourceType === ResourcesTypesEnum.Quiz) {
+        }
+
+        if (resource.resourceType === ResourcesTypesEnum.Quiz) {
           const quiz = resource as Quiz
+
           const newQuiz = await ResourceService.addQuiz({
             title: quiz.title,
             description: quiz.description,
             items: quiz.items,
             isDuplicate: isDuplicate,
             resourceType: ResourcesTypesEnum.Quiz,
-            category: null,
-            id: crypto.randomUUID()
+            category: null
           })
+
           newResources.push(newQuiz)
+        }
+
+        if (resource.resourceType === ResourcesTypesEnum.Attachment) {
+          const attachment = resource as Attachment
+          const newAttachment = await ResourceService.duplicateAttachment(
+            attachment._id
+          )
+
+          newResources.push(newAttachment)
         }
       }
     }
