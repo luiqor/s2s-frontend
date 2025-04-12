@@ -193,6 +193,15 @@ export const ResourceService = {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
+  duplicateAttachment: (id: string) => {
+    return baseService.request<Attachment>({
+      method: 'POST',
+      url: getFullUrl({
+        pathname: URLs.resources.attachments.duplicate,
+        parameters: { id }
+      })
+    })
+  },
   deleteAttachment: (id: string) => {
     return baseService.request<void>({
       method: 'DELETE',
